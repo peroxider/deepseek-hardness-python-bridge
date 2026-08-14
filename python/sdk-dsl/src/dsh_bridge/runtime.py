@@ -235,7 +235,28 @@ class _StdioTransport:
     def write(self, message: dict[str, Any]) -> None:
         if self._closed.is_set():
             return
-        payload = json.dumps(message, separators=(",", ":")) + "\n"
+        try:
+            payload = json.dumps(message, separators=(",", ":")) + "\n"
+        except TypeError:
+            # A success response carrying a non-JSON-serializable result must
+            # not hang the peer: downgrade to an error frame naming the fault.
+            # Error frames themselves are built from plain types and always
+            # serialize; if the offending message was already an error frame,
+            # dropping it is the only remaining option.
+            if "result" not in message:
+                return
+            payload = json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": message.get("id"),
+                    "error": {
+                        "code": -32603,
+                        "message": "dsh_bridge: method result is not JSON-serializable",
+                        "data": {"kind": "exception"},
+                    },
+                },
+                separators=(",", ":"),
+            ) + "\n"
         try:
             with self._write_lock:
                 self._stdout.write(payload)

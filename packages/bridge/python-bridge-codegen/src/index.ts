@@ -592,13 +592,27 @@ function collectClassFields(source: string, className: string, after: number): P
   if (!span) return []
   const body = source.slice(span.start, span.end)
   const fields: ParsedField[] = []
+  // Only lines at the class body's own indent level are attributes: method
+  // parameters in multi-line signatures sit one level deeper and would
+  // otherwise be misread as fields.
+  let attrIndent: number | undefined
   for (const line of body.split('\n')) {
+    if (!line.trim()) continue
+    const indent = line.length - line.trimStart().length
+    if (attrIndent === undefined) {
+      if (!/^\s+([A-Za-z_][\w]*)\s*:/.test(line)) continue
+      attrIndent = indent
+    }
+    if (indent !== attrIndent) continue
     // One indent level, `name: annotation` with optional `= default`.
     const m = /^\s+([A-Za-z_][\w]*)\s*:\s*([^=\n]+?)(?:\s*=\s*(.+))?$/.exec(line)
     if (!m) continue
+    const annotation = group(m, 2).trim()
+    // Annotations of real attributes never carry parameter-list punctuation.
+    if (annotation.includes(',') || annotation.includes('(')) continue
     fields.push({
       name: group(m, 1),
-      annotation: group(m, 2).trim(),
+      annotation,
       defaultValue: optionalGroup(m, 3)?.trim(),
     })
   }
@@ -724,6 +738,7 @@ function generatePackageJson(name: string): BridgePackageFile {
     dependencies: {
       '@deepseek-ai/dsh-python-bridge-runtime': 'workspace:^',
       '@deepseek-ai/dsh-tools': 'workspace:^',
+      '@deepseek-ai/dsh-session': 'workspace:^',
       '@deepseek-ai/schemastery': 'workspace:^',
     },
   }
@@ -743,6 +758,7 @@ function generateIndexTs(parsed: ParsedModule, modulePath: string): BridgePackag
     `import { Context, Service } from '@deepseek-ai/cordis'`,
     `import z from '@deepseek-ai/schemastery'`,
     ...(needsTools ? [`import { defineTool } from '@deepseek-ai/dsh-tools'`] : []),
+    ...(needsTools ? [`import type { JsonValue } from '@deepseek-ai/dsh-session'`] : []),
     `import { PythonBridgeService, type PythonBridge } from '@deepseek-ai/dsh-python-bridge-runtime'`,
   ]
 
@@ -940,7 +956,10 @@ function emitProvideMethod(method: ParsedProvideMethod): string {
 function emitToolRegistration(tool: ParsedTool, bridgeExpr: string): string {
   const parametersJson = JSON.stringify(tool.parameters, null, 2)
   const outputSchemaJson = tool.outputSchema ? JSON.stringify(tool.outputSchema, null, 2) : undefined
-  const returnType = tool.returnAnnotation ? pythonTypeToTs(tool.returnAnnotation) : 'unknown'
+  // defineTool infers the execute return from output.schema; wire values are
+  // JSON, so `unknown` in the Python-derived type must project to JsonValue.
+  const returnType = (tool.returnAnnotation ? pythonTypeToTs(tool.returnAnnotation) : 'unknown')
+    .replaceAll('unknown', 'JsonValue')
   const lines = [
     `ctx.tools.register(defineTool({`,
     `  name: ${JSON.stringify(tool.name)},`,

@@ -139,6 +139,25 @@ def test_router_records_tools():
     assert route.func("hi") == "hi"
 
 
+def test_stdio_transport_downgrades_unserializable_result_to_error_frame():
+    """A success response whose result cannot be JSON-serialized must not hang
+    the peer: the transport downgrades it to an -32603/exception error frame."""
+
+    class NotSerializable:
+        pass
+
+    sink = io.StringIO()
+    transport = _StdioTransport(stdin=io.StringIO(), stdout=sink)
+    transport.respond("id1", {"value": NotSerializable()})
+
+    frames = [json.loads(line) for line in sink.getvalue().split("\n") if line]
+    assert len(frames) == 1
+    assert frames[0]["id"] == "id1"
+    assert frames[0]["error"]["code"] == -32603
+    assert frames[0]["error"]["data"] == {"kind": "exception"}
+    assert "not JSON-serializable" in frames[0]["error"]["message"]
+
+
 def test_stdio_transport_writes_one_line_per_frame():
     sink = io.StringIO()
     transport = _StdioTransport(stdin=io.StringIO(), stdout=sink)
