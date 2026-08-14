@@ -123,6 +123,8 @@ scripts/install-python-plugin.py \
 
 The only authoring step remains the decorated Python module; everything else is this script.
 
+The steps are decoupled — each consumes artifacts the previous one left on disk, so any subset runs alone via `--steps codegen,build,assemble,smoke,patch` (e.g. `--steps patch` re-applies config without rebuilding, `--steps codegen,build` leaves the profile untouched). Other flags: `--dry-run` prints the patch without writing, `--uninstall` removes the entries (`--delete-dir` also removes the plugin directory). Environment overrides (`DSH_TSC`, `DSH_NODE`, `DSH_MONOREPO`, `DSH_INSTALL`, `DSH_HOME`, `DSH_TYPE_ROOTS`) let the script adapt to different machines; YAML editing falls back to the dsh-bundled js-yaml when PyYAML is absent, and dependency linking falls back to copying where symlinks are denied. Full details are in the script's module docstring.
+
 ### 3. Wire it in `cordis.yml`
 
 ```yaml

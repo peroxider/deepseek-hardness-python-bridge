@@ -123,6 +123,8 @@ scripts/install-python-plugin.py \
 
 唯一需要人工编写的只剩装饰器模块本身，其余都由该脚本完成。
 
+各步骤已解耦——每一步都消费上一步留在磁盘上的产物，因此可以通过 `--steps codegen,build,assemble,smoke,patch` 单独运行任意子集（例如 `--steps patch` 只重放配置而不重新构建，`--steps codegen,build` 不触碰 profile）。其他开关：`--dry-run` 只打印 patch 不写盘；`--uninstall` 移除条目（加 `--delete-dir` 连插件目录一并删除）。环境覆盖项（`DSH_TSC`、`DSH_NODE`、`DSH_MONOREPO`、`DSH_INSTALL`、`DSH_HOME`、`DSH_TYPE_ROOTS`）让脚本适配不同机器；缺少 PyYAML 时 YAML 编辑回退到 dsh 自带的 js-yaml；符号链接被拒绝时依赖链接回退为复制。完整说明见脚本的模块 docstring。
+
 ### 3. 在 `cordis.yml` 中接线
 
 ```yaml
