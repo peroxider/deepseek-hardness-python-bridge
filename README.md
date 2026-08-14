@@ -8,6 +8,19 @@ English | [中文](README.zh.md)
 >
 > **Verified end-to-end against the real deepseek-harness**: a test `cordis.yml` boots through the genuine Cordis Loader with real schemastery Config validation, real `ToolRuntime` registration, and the real event system, driving a real Python child process; the bridge packages and a generated example package pass the monorepo's strict `tsc -b` with zero errors. See [Verification status](#verification-status) for the exact coverage and remaining limits.
 
+**Capability conversion, not reimplementation.** The bridge is the conversion path from *Python capability* to *dsh plugin*: the algorithms, libraries, and state stay in Python — the harness sees a native TypeScript plugin. The [capability table](#what-it-does) below is the mapping: each `@dsh_bridge` decorator converts one Python capability surface into one dsh plugin surface.
+
+## Documentation
+
+Two usage guides cover the same workflow from different operator perspectives, both bilingual (EN/ZH):
+
+| Guide | Operator | Path |
+| --- | --- | --- |
+| Human Engineer Guide | A person at a terminal | [`docs/guides/human-engineer.md`](docs/guides/human-engineer.md) |
+| Agent-friendly Guide | An AI coding agent (uses the `dsh-python-plugin` skill) | [`docs/guides/agent-friendly.md`](docs/guides/agent-friendly.md) |
+| Step-by-step cookbook | Both (full walkthrough) | [`docs/cookbook/adding-a-python-bridge.md`](docs/cookbook/adding-a-python-bridge.md) |
+| Standard skill | Agent runtimes with skill loading | [`skill/dsh-python-plugin/SKILL.md`](skill/dsh-python-plugin/SKILL.md) |
+
 ## What it does
 
 DeepSeek Harness's plugin surface is TypeScript-only. This bridge is the path that takes a Python module and makes it a native dsh plugin:
@@ -58,7 +71,9 @@ packages/bridge/
     tests/                                 vitest: parser, type projection, emitter
 examples/python-bridge-ml/               Runnable Service Provider + tool + listeners snapshot
 docs/cookbook/adding-a-python-bridge.md  Step-by-step user guide (EN/ZH)
-docs/subsystems/python-bridge.md         Subsystem reference (EN/ZH)
+docs/guides/human-engineer.md            Human engineer usage guide (EN/ZH)
+docs/guides/agent-friendly.md            Agent-friendly usage guide (EN/ZH)
+skill/dsh-python-plugin/SKILL.md         Standard skill driving the conversion workflow
 tests/stubs/                             Standalone-dev @deepseek-ai/* stubs (offline resolution)
 tests/e2e/                               Offline end-to-end checks (real Python child)
 scripts/setup-stubs.mjs                  Materialize stubs into node_modules/

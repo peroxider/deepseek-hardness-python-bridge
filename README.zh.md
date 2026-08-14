@@ -8,6 +8,19 @@
 >
 > **已对真实 deepseek-harness 完成端到端验证**：测试用 `cordis.yml` 经真实 Cordis Loader 启动，真实 schemastery 校验 Config、真实 `ToolRuntime` 注册工具、真实事件系统转发，驱动真实 Python 子进程；bridge 包与生成的示例包在 monorepo 严格 `tsc -b` 下零错误通过。具体覆盖范围与剩余限制见[验证状态](#验证状态)。
 
+**能力转化，而非重新实现。** bridge 是从 *Python 能力* 到 *dsh 插件* 的转化通道：算法、库与状态留在 Python 侧——harness 看到的是一个原生 TypeScript 插件。下面的[能力对照表](#它做什么)就是映射关系：每个 `@dsh_bridge` 装饰器把一种 Python 能力面转化为一种 dsh 插件面。
+
+## 文档
+
+两份使用指南从不同的操作者视角覆盖同一工作流，均为中英双语：
+
+| 指南 | 操作者 | 路径 |
+| --- | --- | --- |
+| 人类工程师指南 | 坐在终端前的人 | [`docs/guides/human-engineer.zh.md`](docs/guides/human-engineer.zh.md) |
+| Agent 友好型指南 | AI 编码 Agent（使用 `dsh-python-plugin` skill） | [`docs/guides/agent-friendly.zh.md`](docs/guides/agent-friendly.zh.md) |
+| 逐步教程 cookbook | 两者（完整走查） | [`docs/cookbook/adding-a-python-bridge.zh.md`](docs/cookbook/adding-a-python-bridge.zh.md) |
+| 标准 skill | 支持加载 skill 的 Agent 运行时 | [`skill/dsh-python-plugin/SKILL.md`](skill/dsh-python-plugin/SKILL.md) |
+
 ## 它做什么
 
 DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python 模块变成 dsh 原生插件的通道：
@@ -58,7 +71,9 @@ packages/bridge/
     tests/                                 vitest：解析器、类型投影、输出
 examples/python-bridge-ml/               可运行的 Service Provider + tool + listener 快照
 docs/cookbook/adding-a-python-bridge.md  用户逐步指南（中英双语）
-docs/subsystems/python-bridge.md         子系统参考页（中英双语）
+docs/guides/human-engineer.md            人类工程师使用指南（中英双语）
+docs/guides/agent-friendly.md            Agent 友好型使用指南（中英双语）
+skill/dsh-python-plugin/SKILL.md         驱动转化工作流的标准 skill
 tests/stubs/                             独立开发用 @deepseek-ai/* stub（离线解析）
 tests/e2e/                               离线端到端检查（真实 Python 子进程）
 scripts/setup-stubs.mjs                  将 stub 物化到 node_modules/
