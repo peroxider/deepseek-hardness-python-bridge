@@ -21,6 +21,9 @@
       "path": "../../subprocess/subprocess"
     },
     {
+      "path": "../../sandbox/sandbox"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

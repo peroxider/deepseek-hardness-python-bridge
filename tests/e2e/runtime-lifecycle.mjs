@@ -183,6 +183,71 @@ const ctx = new Context({})
   await service.dispose()
 }
 
+// 8. sandbox confine: real ConfinedArgv shape ({ argv, enforcement, ... }) is
+// unwrapped; danger-full-access bypasses confinement entirely.
+{
+  const confinedCalls = []
+  const fakeSandbox = {
+    confine: (argv, policy) => {
+      confinedCalls.push({ argv, policy })
+      return { argv: ['bwrap', '--ro-bind', '/', '/', ...argv], enforcement: 'full', denialSignatures: [] }
+    },
+  }
+  const ctxWithSandbox = new Context({ sandbox: fakeSandbox })
+  const service = new PythonBridgeService(ctxWithSandbox)
+  const argvSeen = []
+  const child = new FakeChild()
+  withInitialize(child)
+  service.spawn(
+    { module: 'm', sandbox: 'workspace-write', cwd: '/tmp/ws', reconnect: { enabled: false } },
+    { spawnFn: (argv) => { argvSeen.push([...argv]); return child } },
+  )
+  assert(argvSeen[0]?.[0] === 'bwrap', `confined argv used (got ${argvSeen[0]?.[0]})`)
+  assert(confinedCalls[0]?.policy?.mode === 'workspace-write', 'policy mode forwarded')
+  assert(confinedCalls[0]?.policy?.workspaceRoot === '/tmp/ws', 'workspaceRoot resolved from cwd')
+  await service.dispose()
+
+  const service2 = new PythonBridgeService(ctxWithSandbox)
+  const argvSeen2 = []
+  const child2 = new FakeChild()
+  withInitialize(child2)
+  service2.spawn(
+    { module: 'm', sandbox: 'danger-full-access', reconnect: { enabled: false } },
+    { spawnFn: (argv) => { argvSeen2.push([...argv]); return child2 } },
+  )
+  assert(argvSeen2[0]?.[0] === 'python', 'danger-full-access bypasses confine')
+  assert(confinedCalls.length === 1, 'confine not called for danger-full-access')
+  await service2.dispose()
+}
+
+// 9. A throwing spawn inside the reconnect timer must not crash the host.
+{
+  const service = new PythonBridgeService(ctx)
+  let spawnCalls = 0
+  const children = []
+  const bridge = service.spawn(
+    { module: 'm', reconnect: { enabled: true, initialDelayMs: 1, maxDelayMs: 5, maxAttempts: 3 } },
+    {
+      spawnFn: () => {
+        spawnCalls++
+        if (spawnCalls > 1) throw new Error('confine exploded')
+        const c = new FakeChild()
+        withInitialize(c)
+        children.push(c)
+        return c
+      },
+    },
+  )
+  await waitFor(() => bridge.ready, 'ready before reconnect-throw case')
+  children[0].emitExit(1, null)
+  // The reconnect timer fires; spawnFn throws inside it. If the exception
+  // escaped, the process would be dead before this line ran.
+  await new Promise(r => setTimeout(r, 60))
+  assert(spawnCalls >= 2, 'reconnect attempted the respawn')
+  assert(true, 'host survived a throwing respawn in the reconnect timer')
+  await service.dispose()
+}
+
 if (failures > 0) {
   console.error(`${failures} lifecycle check(s) failed`)
   process.exit(1)

@@ -62,6 +62,7 @@ const REAL_PACKAGES = {
   '@deepseek-ai/cosmokit': `${monorepo}/vendor/cosmokit/src/index.ts`,
   '@deepseek-ai/dsh-sdk-protocol': `${monorepo}/packages/sdk/protocol/src/index.ts`,
   '@deepseek-ai/dsh-subprocess': `${monorepo}/packages/subprocess/subprocess/src/index.ts`,
+  '@deepseek-ai/dsh-sandbox': `${monorepo}/packages/sandbox/sandbox/src/index.ts`,
   '@deepseek-ai/dsh-tools': `${monorepo}/packages/core/tools/src/index.ts`,
   '@deepseek-ai/dsh-system-prompt': `${monorepo}/packages/core/system-prompt/src/index.ts`,
   '@deepseek-ai/dsh-scope': `${monorepo}/packages/core/scope/src/index.ts`,

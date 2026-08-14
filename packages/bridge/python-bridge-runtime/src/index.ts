@@ -16,8 +16,10 @@
  */
 
 import { spawn as spawnChildProcess } from 'node:child_process'
+import { resolve } from 'node:path'
 import type { Readable, Writable } from 'node:stream'
 import { Context, Service } from '@deepseek-ai/cordis'
+import type { SandboxPolicy, SandboxProvider } from '@deepseek-ai/dsh-sandbox'
 import {
   JsonRpcLineTransport,
   JsonRpcResponseError,
@@ -453,13 +455,20 @@ export class PythonBridge {
       ...(this.spec.initArgs ? ['--init-args', JSON.stringify(this.spec.initArgs)] : []),
       ...(this.spec.maxThreads ? ['--max-threads', String(this.spec.maxThreads)] : []),
     ]
-    // Optional sandbox confinement: only when the seam is loaded does the
-    // policy apply; the bridge never silently bypasses a confinement failure.
-    const sandbox = this.ctx.get?.('sandbox') as { confine?(argv: readonly string[], policy: { mode: PythonBridgeSandbox }): readonly string[] } | undefined
-    if (this.spec.sandbox && sandbox?.confine) {
-      return sandbox.confine(argv, { mode: this.spec.sandbox })
+    // Optional sandbox confinement. `danger-full-access` bypasses confinement
+    // by contract; when the seam is absent the child runs unconfined (the
+    // deployment chose not to load one). `confine()` failures (SandboxError)
+    // propagate — the bridge never silently bypasses confinement.
+    if (!this.spec.sandbox || this.spec.sandbox === 'danger-full-access') {
+      return argv
     }
-    return argv
+    const sandbox = this.ctx.get?.('sandbox') as SandboxProvider | undefined
+    if (!sandbox) return argv
+    const policy: SandboxPolicy = {
+      mode: this.spec.sandbox,
+      workspaceRoot: resolve(this.spec.cwd ?? process.cwd()),
+    }
+    return sandbox.confine(argv, policy).argv
   }
 
   private buildEnv(): Record<string, string> {
@@ -524,7 +533,14 @@ export class PythonBridge {
     this.reconnectAttempt += 1
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = undefined
-      if (!this.disposed) this.spawnChild()
+      if (this.disposed) return
+      try {
+        this.spawnChild()
+      } catch {
+        // Respawn failures (confine errors, missing interpreter) consume
+        // budget and retry; they must never crash the host process.
+        this.scheduleReconnect()
+      }
     }, delay)
   }
 
