@@ -607,11 +607,15 @@ function collectClassFields(source: string, className: string, after: number): P
     // One indent level, `name: annotation` with optional `= default`.
     const m = /^\s+([A-Za-z_][\w]*)\s*:\s*([^=\n]+?)(?:\s*=\s*(.+))?$/.exec(line)
     if (!m) continue
+    const fieldName = group(m, 1)
+    // Underscore-prefixed fields are internal state by Python convention
+    // (e.g. `_notes: list = field(default_factory=list)`), never config keys.
+    if (fieldName.startsWith('_')) continue
     const annotation = group(m, 2).trim()
     // Annotations of real attributes never carry parameter-list punctuation.
     if (annotation.includes(',') || annotation.includes('(')) continue
     fields.push({
-      name: group(m, 1),
+      name: fieldName,
       annotation,
       defaultValue: optionalGroup(m, 3)?.trim(),
     })

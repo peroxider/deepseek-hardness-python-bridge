@@ -119,6 +119,23 @@ describe('pythonTypeToTs', () => {
   })
 })
 
+describe('private dataclass fields', () => {
+  it('skips underscore-prefixed fields (internal state, never config)', () => {
+    const source = `
+from dataclasses import dataclass, field
+from dsh_bridge import service
+
+@service(name="store")
+@dataclass
+class Store:
+    root: str
+    _cache: list = field(default_factory=list)
+`
+    const parsed = parseModuleSources([{ path: 'store.py', contents: source }])
+    expect(parsed.services[0].fields.map(f => f.name)).toEqual(['root'])
+  })
+})
+
 describe('snakeToCamel', () => {
   it('converts snake_case to camelCase', () => {
     expect(snakeToCamel('model_path')).toBe('modelPath')

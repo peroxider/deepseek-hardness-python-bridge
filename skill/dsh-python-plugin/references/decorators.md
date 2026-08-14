@@ -25,6 +25,7 @@ Field mapping rules (dataclass → generated Config):
 - Annotation → type: `int`/`float` → `number`, `bool` → `boolean`, `str`/`bytes` → `string`, `list[T]` → `T[]`, `dict[str, T]` → `Record<string, T>`, `Optional[T]` / `T | None` → `T | null`, unions → `T | U`.
 - The generated constructor maps config back to `initArgs` snake_case kwargs (`config.modelPath` → `model_path=`).
 - Class-body fields must sit at the class indent level; method parameters in multi-line signatures are not fields (the parser filters by indent).
+- Underscore-prefixed fields (`_cache: list = field(default_factory=list)`) are internal state by convention and never become config keys — no need to move them into `__post_init__`.
 
 ## `@provide_method(timeout_ms=None, is_concurrency_safe=None)` — method decorator
 

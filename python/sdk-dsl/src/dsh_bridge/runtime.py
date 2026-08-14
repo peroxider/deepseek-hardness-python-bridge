@@ -7,9 +7,10 @@ compact JSON object per `\\n`-terminated line.
 
 Wire method names:
 - `initialize` — handshake; returns `serverInfo` + manifest of available methods.
-- `<service>.<provide_method>` — synchronous call to a `@provide_method`.
-- `<tool>.__call__` — synchronous call to a `@tool`-decorated function.
-- `<capability>.<backend>.<method>` — synchronous call to a capability method.
+- `<method>` — synchronous call to a `@provide_method` (the bare Python method
+  name, e.g. `embed`).
+- `<tool>` — synchronous call to a `@tool`-decorated function (the bare tool
+  name, e.g. `resize_image`).
 - `shutdown` — request graceful exit.
 - Notifications from TS to Python:
     - `event/subscribe` — register an event stream; subsequent `event/deliver`

@@ -60,6 +60,21 @@ for (const [input, expected] of typeCases) {
 }
 assert(snakeToCamel('model_path') === 'modelPath', 'snakeToCamel works')
 
+// Private dataclass fields (underscore-prefixed) are internal state, never config.
+const privSource = `
+from dataclasses import dataclass, field
+from dsh_bridge import service
+
+@service(name="store")
+@dataclass
+class Store:
+    root: str
+    _cache: list = field(default_factory=list)
+`
+const privParsed = parseModuleSources([{ path: 'store.py', contents: privSource }])
+assert(JSON.stringify(privParsed.services[0].fields.map(f => f.name)) === JSON.stringify(['root']),
+  'private dataclass fields skipped (got ' + JSON.stringify(privParsed.services[0].fields.map(f => f.name)) + ')')
+
 // -- service-class package ------------------------------------------------------
 const artifacts = generateBridgePackage({
   module: 'examples.python-bridge-ml.provider',
