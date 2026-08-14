@@ -1,0 +1,18 @@
+# Example composition entry: mount the Python ML provider as a Cordis plugin.
+#
+# Run with `pnpm dsh --profile examples/python-bridge-ml` to boot a dsh
+# harness that includes the Python bridge ML provider.
+
+- id: python-bridge-ml
+  name: '@my-org/python-bridge-ml'
+  config:
+    pythonBin: python
+    module: examples.python-bridge-ml.provider
+    className: MLProvider
+    pipDeps: ['Pillow>=10']
+    sandbox: workspace-write
+    graceMs: 3000
+    # `initArgs` are forwarded to MLProvider(...) at the Python side.
+    modelPath: /tmp/model
+    batchSize: 16
+    precision: float16
