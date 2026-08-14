@@ -108,6 +108,21 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
   --name @my-org/python-bridge-ml
 ```
 
+### One-command install (codegen → build → assemble → patch)
+
+For the development-stage workflow (a built dsh install that cannot load `.ts` source), `scripts/install-python-plugin.py` runs the whole mechanical pipeline — codegen, `tsc` build, self-contained plugin-directory assembly, and the `cordis.patch.yml` insert:
+
+```sh
+scripts/install-python-plugin.py \
+  --source path/to/bridge.py \
+  --name '@my-org/lkb-bridge' \
+  --module lkb_dsh.bridge \
+  --python-src path/to/my-python/src \
+  --config-json '{"boardId": "my-board"}'
+```
+
+The only authoring step remains the decorated Python module; everything else is this script.
+
 ### 3. Wire it in `cordis.yml`
 
 ```yaml

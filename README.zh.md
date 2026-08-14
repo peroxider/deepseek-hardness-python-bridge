@@ -108,6 +108,21 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
   --name @my-org/python-bridge-ml
 ```
 
+### 一键安装（codegen → 构建 → 组装 → patch）
+
+针对开发态工作流（构建版 dsh 无法加载 `.ts` 源码），`scripts/install-python-plugin.py` 把全部机械步骤收敛为一条命令 —— codegen、`tsc` 构建、自包含插件目录组装、`cordis.patch.yml` 条目写入：
+
+```sh
+scripts/install-python-plugin.py \
+  --source path/to/bridge.py \
+  --name '@my-org/lkb-bridge' \
+  --module lkb_dsh.bridge \
+  --python-src path/to/my-python/src \
+  --config-json '{"boardId": "my-board"}'
+```
+
+唯一需要人工编写的只剩装饰器模块本身，其余都由该脚本完成。
+
 ### 3. 在 `cordis.yml` 中接线
 
 ```yaml
