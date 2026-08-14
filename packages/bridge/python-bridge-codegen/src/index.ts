@@ -812,13 +812,17 @@ function emitServiceClass(service: ParsedService, parsed: ParsedModule, modulePa
   const toolRegistrations = parsed.tools.map(t => emitToolRegistration(t, 'this.bridge')).join('\n\n')
   const listenerRegistrations = parsed.listeners.map(l => emitListenerRegistration(l, 'this.bridge')).join('\n')
 
+  // `ctx.<name>` access requires a declared injection (packages/AGENTS.md):
+  // the tools seam is injected whenever the module registers tools.
+  const injectList = ['pythonBridge', ...(parsed.tools.length > 0 ? ['tools'] : [])]
+
   const out: string[] = [
     `export interface ${configName} {`,
     ...interfaceLines,
     `}`,
     '',
     `export class ${typeName} extends Service {`,
-    `  static inject = ['pythonBridge']`,
+    `  static inject = [${injectList.map(k => `'${k}'`).join(', ')}]`,
     ``,
     `  static Config: z<${configName}> = z.object({`,
     ...zodEntries,
@@ -908,10 +912,24 @@ function emitToolRegistration(tool: ParsedTool, bridgeExpr: string): string {
 }
 
 function emitListenerRegistration(listener: ParsedListener, bridgeExpr: string): string {
+  // Cordis `EventOptions` is `{ prepend, global }`; emit/waterfall is the
+  // emitter's dispatch semantics, not a listener registration option. A
+  // waterfall listener MUST call `next()` to keep the chain alive — the
+  // Python side is notified fire-and-forget, and wire-level waterfall
+  // continuation (Python's return feeding `next()`) is deferred.
+  const options = `{ prepend: ${listener.prepend}, global: ${listener.global} }`
+  if (listener.mode === 'waterfall') {
+    return [
+      `ctx.on(${JSON.stringify(listener.event)}, (payload: unknown, next: () => void) => {`,
+      `  ${bridgeExpr}.notify('event/deliver', { event: ${JSON.stringify(listener.event)}, payload })`,
+      `  return next()`,
+      `}, ${options})`,
+    ].join('\n')
+  }
   return [
     `ctx.on(${JSON.stringify(listener.event)}, (payload: unknown) => {`,
     `  ${bridgeExpr}.notify('event/deliver', { event: ${JSON.stringify(listener.event)}, payload })`,
-    `}, { mode: '${listener.mode}', prepend: ${listener.prepend}, global: ${listener.global} })`,
+    `}, ${options})`,
   ].join('\n')
 }
 
@@ -940,13 +958,16 @@ function emitFunctionPlugin(parsed: ParsedModule, modulePath: string): string {
   const toolRegistrations = parsed.tools.map(t => emitToolRegistration(t, 'bridge')).join('\n\n')
   const listenerRegistrations = parsed.listeners.map(l => emitListenerRegistration(l, 'bridge')).join('\n')
 
+  // `ctx.tools` access requires a declared injection (packages/AGENTS.md).
+  const injectList = ['pythonBridge', ...(parsed.tools.length > 0 ? ['tools'] : [])]
+
   const out: string[] = [
     `export interface BridgeToolsConfig {`,
     ...interfaceLines,
     `}`,
     ``,
     `export const name = 'python-bridge-tools'`,
-    `export const inject = ['pythonBridge']`,
+    `export const inject = [${injectList.map(k => `'${k}'`).join(', ')}]`,
     ``,
     `export const Config: z<BridgeToolsConfig> = z.object({`,
     ...zodEntries,

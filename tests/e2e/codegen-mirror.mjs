@@ -98,6 +98,29 @@ assert(index.contents.includes('render:'), 'defineTool render emitted')
 assert(index.contents.includes(`ctx.on("session/event"`), 'listener registration emitted')
 assert(!index.contents.includes('export function apply'), 'no apply() in service-class form')
 
+// Real Cordis API compatibility (verified against vendor/cordis/src/events.ts
+// and packages/AGENTS.md):
+assert(index.contents.includes(`static inject = ['pythonBridge', 'tools']`),
+  'ctx.tools access declared in static inject')
+assert(!/mode:/.test(index.contents), 'no mode option in ctx.on registration (EventOptions is { prepend, global })')
+assert(index.contents.includes('{ prepend: false, global: false }'), 'listener options limited to prepend/global')
+
+const waterfallSource = `
+from dsh_bridge import on
+
+@on("session/event", mode="waterfall")
+def audit(event: str, payload: dict, next_fn) -> None:
+    next_fn()
+`
+const wfArtifacts = generateBridgePackage({
+  module: 'example.waterfall',
+  packageName: '@my-org/bridge-wf',
+  sources: [{ path: 'wf.py', contents: waterfallSource }],
+})
+const wfIndex = wfArtifacts.files.find(f => f.path === 'src/index.ts')
+assert(wfIndex.contents.includes('(payload: unknown, next: () => void)'), 'waterfall handler receives next')
+assert(wfIndex.contents.includes('return next()'), 'waterfall handler calls next() (chain hygiene)')
+
 // -- function-plugin package ------------------------------------------------------
 const toolsOnly = `
 from dsh_bridge import tool, on
@@ -117,7 +140,7 @@ const fpArtifacts = generateBridgePackage({
 })
 const fpIndex = fpArtifacts.files.find(f => f.path === 'src/index.ts')
 assert(fpIndex.contents.includes(`export const name = 'python-bridge-tools'`), 'function-plugin name export')
-assert(fpIndex.contents.includes(`export const inject = ['pythonBridge']`), 'function-plugin inject export')
+assert(fpIndex.contents.includes(`export const inject = ['pythonBridge', 'tools']`), 'function-plugin inject export')
 assert(fpIndex.contents.includes('export const Config'), 'function-plugin Config export')
 assert(fpIndex.contents.includes('export function apply(ctx: Context, config: BridgeToolsConfig)'), 'apply() emitted')
 assert(!fpIndex.contents.includes('export default'), 'no default export in function-plugin form')

@@ -163,7 +163,8 @@ declare module '@deepseek-ai/cordis' {
 
 /**
  * Cordis service that owns one Python child process per {@link PythonBridge}
- * handle. Disposing the service shuts down every live child.
+ * handle. Teardown is effect-based: the constructor registers the disposer
+ * that shuts down every live child when the owning fiber unloads.
  *
  * The service declares no required injections: the bridge owns its spawn, and
  * the optional sandbox seam is read through `ctx.get('sandbox')`.
@@ -173,6 +174,13 @@ export class PythonBridgeService extends Service {
 
   constructor(ctx: Context) {
     super(ctx, 'pythonBridge')
+    // Cordis never calls a Service.dispose() method; teardown belongs to the
+    // fiber's effect disposers (the subprocess-local pattern).
+    ctx.effect(() => {
+      return async () => {
+        await this.dispose()
+      }
+    }, 'python bridge teardown')
   }
 
   /**
@@ -191,7 +199,8 @@ export class PythonBridgeService extends Service {
     return bridge
   }
 
-  /** Shut down every live bridge and await their teardown ladders. */
+  /** Shut down every live bridge and await their teardown ladders. Idempotent;
+   * also registered as the fiber effect disposer at construction. */
   async dispose(): Promise<void> {
     const bridges = [...this.children]
     await Promise.allSettled(bridges.map(b => b.shutdown()))

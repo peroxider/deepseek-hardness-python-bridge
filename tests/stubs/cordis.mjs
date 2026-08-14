@@ -10,6 +10,7 @@
 export class Context {
   constructor(services = {}) {
     this._services = services
+    this._disposers = []
   }
 
   get(name) {
@@ -18,6 +19,19 @@ export class Context {
 
   on() {
     return () => {}
+  }
+
+  /** Mirror cordis' effect-based teardown: the returned function is the disposer. */
+  effect(callback) {
+    const disposer = callback()
+    if (typeof disposer === 'function') this._disposers.push(disposer)
+    return typeof disposer === 'function' ? disposer : () => {}
+  }
+
+  async dispose() {
+    for (const disposer of this._disposers.splice(0)) {
+      await disposer()
+    }
   }
 }
 

@@ -150,8 +150,31 @@ describe('generateBridgePackage (service-class form)', () => {
     expect(index.contents).not.toContain(', ... }')
     expect(index.contents).not.toContain('MODULE_PATH')
     expect(index.contents).toContain('class MlService extends Service')
-    expect(index.contents).toContain(`static inject = ['pythonBridge']`)
+    expect(index.contents).toContain(`static inject = ['pythonBridge', 'tools']`)
     expect(index.contents).toContain('export default MlService')
+  })
+
+  it('matches the real Cordis listener registration API (EventOptions is { prepend, global })', () => {
+    expect(index.contents).not.toMatch(/mode:/)
+    expect(index.contents).toContain('{ prepend: false, global: false }')
+  })
+
+  it('emits waterfall handlers that call next() (chain hygiene)', () => {
+    const waterfallSource = `
+from dsh_bridge import on
+
+@on("session/event", mode="waterfall")
+def audit(event: str, payload: dict, next_fn) -> None:
+    next_fn()
+`
+    const wf = generateBridgePackage({
+      module: 'example.waterfall',
+      packageName: '@my-org/bridge-wf',
+      sources: [{ path: 'wf.py', contents: waterfallSource }],
+    })
+    const wfIndex = wf.files.find(f => f.path === 'src/index.ts')!
+    expect(wfIndex.contents).toContain('(payload: unknown, next: () => void)')
+    expect(wfIndex.contents).toContain('return next()')
   })
 
   it('emits dataclass fields as named config keys with defaults', () => {
@@ -207,7 +230,7 @@ def audit(event: str, payload: dict) -> None:
 
   it('emits named function-plugin exports and no default export', () => {
     expect(index.contents).toContain(`export const name = 'python-bridge-tools'`)
-    expect(index.contents).toContain(`export const inject = ['pythonBridge']`)
+    expect(index.contents).toContain(`export const inject = ['pythonBridge', 'tools']`)
     expect(index.contents).toContain('export const Config')
     expect(index.contents).toContain('export function apply(ctx: Context, config: BridgeToolsConfig)')
     expect(index.contents).not.toContain('export default')
