@@ -13,3 +13,4 @@ dist/
 .agents/
 node_modules
 .gen/
+skill/dsh-python-plugin-workspace/

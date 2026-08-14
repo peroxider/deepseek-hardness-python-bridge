@@ -1,0 +1,48 @@
+{
+  "skill_name": "dsh-python-plugin",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我有个 Python 工具库在 /mnt/c/WorkSpace/deepseek-hardness-python-bridge/skill/dsh-python-plugin/evals/files/textkit/（word_count、slugify、summarize 三个函数），想把它变成 deepseek-harness 的插件让 agent 能直接调这些函数。bridge 仓库在 /mnt/c/WorkSpace/deepseek-hardness-python-bridge。请不要动我现在的生产实例（~/.dsh），插件目录用 /tmp/eval-textkit-plugin，DSH_HOME 用 /tmp/eval-textkit-home（里面已建好 profiles/web/cordis.patch.yml）。装完验证一下能不能用。",
+      "expected_output": "A decorated bridge module wrapping textkit (business code untouched), an assembled plugin dir at /tmp/eval-textkit-plugin with built JS + Python packages + dep links, a patched cordis.patch.yml in the isolated DSH_HOME, and a passing smoke check.",
+      "files": ["evals/files/textkit/__init__.py"],
+      "expectations": [
+        "A decorated bridge module exists wrapping textkit (business code __init__.py unmodified)",
+        "The bridge module uses @tool decorators with keyword-argument shape and explicit additionalProperties: False in object schemas",
+        "Plugin dir contains the Python packages (dsh_bridge, textkit, and the bridge module package) at its root",
+        "Plugin dir contains built lib/index.js for the plugin package, dsh-python-bridge-runtime, and dsh-sdk-protocol",
+        "node_modules/@deepseek-ai links exist for cordis, schemastery, dsh-tools",
+        "cordis.patch.yml in the isolated home contains entries with ids python-bridge and textkit, file:// URLs, and config with module + cwd",
+        "The Python bridge module imports cleanly inside the plugin dir (smoke)",
+        "The production instance ~/.dsh was not modified"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "帮我把 /mnt/c/WorkSpace/deepseek-hardness-python-bridge/skill/dsh-python-plugin/evals/files/notedly/ 这个笔记存储模块转成 dsh 插件：要暴露成 ctx.notedly 服务（add_note/list_notes/search 三个方法），再加一个模型可调用的添加笔记工具。它的 root 和 max_notes 要能在 cordis.yml 里配。bridge 仓库在 /mnt/c/WorkSpace/deepseek-hardness-python-bridge，插件目录 /tmp/eval-notedly-plugin，别碰生产实例，patch 到 /tmp/eval-notedly-home 这个隔离 DSH_HOME（profiles/web/cordis.patch.yml 已建）。最后实际调一下服务确认通路。",
+      "expected_output": "A @service dataclass wrapper exposing the three methods with typed signatures, root/max_notes surfaced as config keys, one model-facing tool, and a real-child call proving the path works.",
+      "files": ["evals/files/notedly/__init__.py"],
+      "expectations": [
+        "A @service dataclass wrapper exists exposing add_note/list_notes/search via @provide_method (business code unmodified)",
+        "root and max_notes dataclass fields become config keys (root required, maxNotes with default 1000)",
+        "A model-facing tool for adding notes is declared with a valid schema (explicit additionalProperties)",
+        "Plugin dir assembled with Python packages + built JS + dep links",
+        "cordis.patch.yml contains python-bridge and notedly entries with correct file:// URLs and config",
+        "A real service call against the spawned Python child succeeds (add_note then list_notes returns the note)",
+        "The production instance ~/.dsh was not modified"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "上次装的 textkit 插件（/tmp/eval-textkit-plugin，profile 在 /tmp/eval-textkit-home）配置要改：给 config 加一个 language: 'zh' 字段。不要重新构建，只更新 patch；顺便确认 patch 文件里没有重复的 entry id。",
+      "expected_output": "cordis.patch.yml updated with the new config key, no duplicate entry ids, no rebuild artifacts touched.",
+      "files": [],
+      "expectations": [
+        "The reconfiguration ran only the patch step (no codegen/build artifacts regenerated)",
+        "cordis.patch.yml contains the new config key (language: zh)",
+        "cordis.patch.yml has no duplicate entry ids after the update",
+        "The plugin directory contents are unchanged apart from nothing (no rebuild)"
+      ]
+    }
+  ]
+}
