@@ -54,7 +54,11 @@ The codegen mirrors the Python `dsh_bridge._type_inference` subset:
 
 - **No full Python AST** — the parser is regex-based over the constrained `dsh_bridge` decorator shape. Author-provided decorators with non-keyword arguments are not supported.
 - **No `**/*.py` recursive walking** — pass an explicit file list or a directory containing `.py` files.
-- **Generated `initArgs` carry plain types** — a future iteration will surface dataclass fields as named config keys.
+
+## Generated package forms
+
+- **Module with `@service`** — a default-exported `Service` class. Dataclass fields become named config keys (`model_path` → `modelPath`) with zod defaults; the constructor maps them back to snake_case `initArgs`. Module tools and listeners register against the same shared bridge (one Python child per Service Provider instance, spec §6.1).
+- **Module without `@service`** — a function plugin (named `name` / `inject` / `Config` / `apply`, no default export per `packages/AGENTS.md`). `apply()` spawns one shared bridge for every tool and listener of the module.
 
 ## Model Experience
 
@@ -63,4 +67,6 @@ None — this package is a build-time tool.
 ## Known Limitations and Deferred Work
 
 - **Recursive glob walking is unsupported** — pass an explicit file list. A future iteration will add `tinyglobby` (or equivalent) for ergonomic usage.
-- **No initArgs ↔ dataclass introspection** — the generator emits a placeholder `initArgs` passthrough today; integration with `python_type_to_json_schema` lands in a follow-up.
+- **Only the first `@service` class per module is emitted** — split additional services into separate modules so each gets its own package.
+- **Non-dataclass `__init__` parameters are not introspected** — only class-level annotated fields become config keys; other classes fall back to the `pickInitArgs` passthrough.
+- **`@capability` / `@guard` / `@restrict_tools` / `@system_prompt_section` emission is not wired** — the decorators are parsed but produce no generated code yet.

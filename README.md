@@ -41,6 +41,10 @@ packages/bridge/
 examples/python-bridge-ml/               Runnable Service Provider + tool + listeners snapshot
 docs/cookbook/adding-a-python-bridge.md  Step-by-step user guide (EN/ZH)
 docs/subsystems/python-bridge.md         Subsystem reference (EN/ZH)
+tests/stubs/                             Standalone-dev @deepseek-ai/* stubs (offline resolution)
+tests/e2e/                               Offline end-to-end checks (real Python child)
+scripts/setup-stubs.mjs                  Materialize stubs into node_modules/
+scripts/verify.mjs                       One-command offline verification
 .agents/notes/implemented/feature/       Agent Note documenting the shipped design
 ```
 
@@ -129,13 +133,19 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
 ## Testing
 
 ```sh
-# Python: 43 tests (decorators, type inference, runtime, real-subprocess integration)
+# One-command offline verification (stubs, pytest, codegen, lifecycle,
+# real-child runtime E2E, generated-package E2E):
+node scripts/verify.mjs
+
+# Python only: 43 tests (decorators, type inference, runtime, real-subprocess integration)
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # Example smoke test (no bridge required)
 PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
+
+The standalone repository resolves `@deepseek-ai/*` imports through committed stubs (`tests/stubs/`, materialized by `scripts/setup-stubs.mjs`); inside the deepseek-harness monorepo, pnpm workspace resolution binds the genuine packages and the vitest suites under `packages/bridge/*/tests/` run instead.
 
 ## Non-goals
 

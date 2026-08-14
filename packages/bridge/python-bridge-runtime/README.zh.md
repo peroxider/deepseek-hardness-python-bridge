@@ -22,11 +22,15 @@ declare module '@deepseek-ai/cordis' {
 
 ## 生命周期
 
-`PythonBridgeService.dispose()` 会终止所有仍在运行的子进程，在 SIGKILL 升级前最多等待 `graceMs`（默认 3000）毫秒。清理顺序与 `packages/sdk/client/README.md` 中的 `stdin-EOF → SIGTERM → SIGKILL` 一致。
+`PythonBridgeService.dispose()` 让每个存活的 bridge 走完关停阶梯：`shutdown` 通知 → stdin EOF → 等待 `graceMs`（默认 3000）→ SIGTERM → 再等待 `graceMs` → SIGKILL，与 `packages/sdk/client/README.md` 的 `stdin-EOF → SIGTERM → SIGKILL` 模型一致。
+
+## 进程所有权
+
+Bridge 以 SDK 托管传输层相同的方式拥有自己的 spawn（见 `dsh-subprocess` README 的 "SDK-managed spawns remain outside"）：一个长生命周期的 `node:child_process`，通过 stdio 上的 `JsonRpcLineTransport` 组帧。环境策略通过 `scrubbedParentEnv()` 保持单一来源。
 
 ## 重连
 
-`PythonBridge.spawn()` 接受一个 `reconnect` 配置块：
+子进程意外退出时会按指数退避重启解释器（spec §6.7）。`PythonBridge.spawn()` 接受 `reconnect` 配置块：
 
 ```ts
 reconnect: {
@@ -37,7 +41,7 @@ reconnect: {
 }
 ```
 
-断连期间，`call()` 会以 `PythonBridgeError(kind: 'bridge-down')` 拒绝。
+稳定运行满 `maxDelayMs` 后重试预算重置。断连期间 `call()` 以 `PythonBridgeError(kind: 'bridge-down')` 拒绝；子进程在调用中途死亡时，该调用以 `kind: 'worker-exit'`（`-32011`）拒绝，并附带子进程 stderr 尾部用于诊断。
 
 ## 错误
 
@@ -60,7 +64,7 @@ reconnect: {
 
 ## 沙箱
 
-`sandbox` 字段会转发到 `ctx.subprocess.spawn()`；当 sandbox 服务存在时由 `ctx.sandbox.confine()` 应用策略。
+当 sandbox seam 已加载时，`ctx.sandbox.confine(argv, { mode })` 在 spawn 前包装子进程 argv，且 confinement 失败会直接抛出（bridge 不会静默绕过）。当 seam 缺失时，无论 `sandbox` 字段如何设置子进程都不受限——需要 confinement 的部署必须加载 `dsh-sandbox` 及其后端。
 
 ## 模型体验
 
@@ -72,6 +76,7 @@ reconnect: {
 
 ## 已知限制与未完成工作
 
-- **第一代传输依赖 subprocess 服务的 raw pipe 派发；** 内置 subprocess 服务把 `stdout` 暴露为 `Readable`。后续迭代会在 prompt 驱动的 Python REPL 集成落地后切换到 node-pty 后端通道。
+- **沙箱 confinement 依赖可选 seam** —— 未加载 `dsh-sandbox` 时 `sandbox` 字段仅为提示。
 - **默认不内嵌 CPython 解释器**；本包是进程管理层而非运行时。Pyodide 低延迟路径单独追踪（见 `packages/core/tools/README.md:27`）。
 - **无协议版本协商** —— 预发布阶段，不承诺兼容性。
+- **重连期间的监听器通知队列未实现** —— spec §6.7 的每事件类型 1 MiB 队列暂缓；子进程断连期间产生的通知会被丢弃。

@@ -22,11 +22,15 @@ A typical generated entry calls `ctx.pythonBridge.spawn({ module, className, ini
 
 ## Lifecycle
 
-`PythonBridgeService.dispose()` terminates every still-running child and waits up to `graceMs` (default 3000) before SIGKILL escalation. The disposal ladder mirrors `packages/sdk/client/README.md` `stdin-EOF → SIGTERM → SIGKILL`.
+`PythonBridgeService.dispose()` runs every live bridge through the teardown ladder: `shutdown` notification → stdin EOF → wait `graceMs` (default 3000) → SIGTERM → wait `graceMs` → SIGKILL, mirroring `packages/sdk/client/README.md`'s `stdin-EOF → SIGTERM → SIGKILL` model.
+
+## Spawn ownership
+
+The bridge owns its spawn the same way SDK-managed transports do (see the `dsh-subprocess` README, "SDK-managed spawns remain outside"): a long-lived `node:child_process` framed by `JsonRpcLineTransport` over the child's stdio. Environment policy stays single-sourced through `scrubbedParentEnv()`.
 
 ## Reconnect
 
-`PythonBridge.spawn()` accepts a `reconnect` block:
+An unexpected child exit respawns the interpreter with exponential backoff (spec §6.7). `PythonBridge.spawn()` accepts a `reconnect` block:
 
 ```ts
 reconnect: {
@@ -37,7 +41,7 @@ reconnect: {
 }
 ```
 
-While disconnected, `call()` rejects with `PythonBridgeError(kind: 'bridge-down')`.
+The attempt budget resets after `maxDelayMs` of stable uptime. While disconnected, `call()` rejects with `PythonBridgeError(kind: 'bridge-down')`; a call in flight when the child dies rejects with `kind: 'worker-exit'` (`-32011`) and carries the child's stderr tail for diagnostics.
 
 ## Errors
 
@@ -60,7 +64,7 @@ While disconnected, `call()` rejects with `PythonBridgeError(kind: 'bridge-down'
 
 ## Sandbox
 
-The `sandbox` config field is forwarded to `ctx.subprocess.spawn()`; `ctx.sandbox.confine()` applies the policy when present.
+When the sandbox seam is loaded, `ctx.sandbox.confine(argv, { mode })` wraps the child argv before spawn and confinement failures propagate (the bridge never silently bypasses). When the seam is absent the child runs unconfined regardless of the `sandbox` field — deployments that require confinement must load `dsh-sandbox` and a backend.
 
 ## Model Experience
 
@@ -72,6 +76,7 @@ None; the bridge is a transport.
 
 ## Known Limitations and Deferred Work
 
-- **Generation 1 transport relies on the subprocess service's raw pipe disposition;** the bundled subprocess service exposes `stdout` as a `Readable`. A future iteration will switch to a node-pty backed channel when prompt-driven Python REPL integration lands.
+- **Sandbox confinement requires the optional seam** — without `dsh-sandbox` loaded the `sandbox` field is advisory only.
 - **No in-process CPython embedding** by design; this is a process-management seam, not a runtime. Pyodide-based low-latency paths are tracked separately (see `packages/core/tools/README.md:27`).
 - **No protocol-version negotiation** — pre-release stance, no compatibility promise.
+- **Listener notification queueing during reconnect is unimplemented** — spec §6.7's 1 MiB per-event-type queue is deferred; notifications raised while the child is down are dropped.

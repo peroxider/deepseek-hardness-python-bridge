@@ -41,6 +41,10 @@ packages/bridge/
 examples/python-bridge-ml/               可运行的 Service Provider + tool + listener 快照
 docs/cookbook/adding-a-python-bridge.md  用户逐步指南（中英双语）
 docs/subsystems/python-bridge.md         子系统参考页（中英双语）
+tests/stubs/                             独立开发用 @deepseek-ai/* stub（离线解析）
+tests/e2e/                               离线端到端检查（真实 Python 子进程）
+scripts/setup-stubs.mjs                  将 stub 物化到 node_modules/
+scripts/verify.mjs                       一键离线验证
 .agents/notes/implemented/feature/       记录已交付设计的 Agent Note
 ```
 
@@ -129,13 +133,18 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
 ## 测试
 
 ```sh
-# Python：43 个测试（装饰器、类型推断、运行时、真实子进程集成）
+# 一键离线验证（stub、pytest、codegen、生命周期、真实子进程 runtime E2E、生成包 E2E）：
+node scripts/verify.mjs
+
+# 仅 Python：43 个测试（装饰器、类型推断、运行时、真实子进程集成）
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # 示例 smoke test（无需 bridge）
 PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
+
+独立仓库通过提交的 stub（`tests/stubs/`，由 `scripts/setup-stubs.mjs` 物化）解析 `@deepseek-ai/*` 导入；在 deepseek-harness monorepo 内，pnpm workspace 解析会绑定真实包，改由 `packages/bridge/*/tests/` 下的 vitest 套件运行。
 
 ## 非目标
 

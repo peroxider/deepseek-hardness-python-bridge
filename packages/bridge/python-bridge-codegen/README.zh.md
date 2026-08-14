@@ -54,7 +54,11 @@ const artifacts = generateBridgePackage({
 
 - **无完整 Python AST** —— 解析器基于正则约束于 `dsh_bridge` 装饰器的形状。仅关键字参数之外的装饰器写法暂不支持。
 - **不支持 `**/*.py` 递归遍历** —— 请显式传入文件列表或包含 `.py` 的目录。
-- **生成的 `initArgs` 仅做透传** —— 后续迭代会把 dataclass 字段暴露为命名 config key。
+
+## 生成包的两种形态
+
+- **模块含 `@service`** —— 默认导出的 `Service` 类。Dataclass 字段成为命名 config key（`model_path` → `modelPath`）并带 zod 默认值；构造函数再把它们映射回 snake_case 的 `initArgs`。同模块的工具与监听器注册到同一个共享 bridge（每个 Service Provider 实例一个 Python 子进程，spec §6.1）。
+- **模块不含 `@service`** —— 函数插件（命名导出 `name` / `inject` / `Config` / `apply`，按 `packages/AGENTS.md` 约定无默认导出）。`apply()` 为模块内所有工具与监听器派生一个共享 bridge。
 
 ## 模型体验
 
@@ -63,4 +67,6 @@ const artifacts = generateBridgePackage({
 ## 已知限制与未完成工作
 
 - **不支持递归 glob 遍历** —— 请显式传入文件列表。后续迭代将引入 `tinyglobby`（或等价物）以提供更友好的体验。
-- **无 initArgs ↔ dataclass 自省** —— 目前生成器输出 `initArgs` 透传占位符；与 `python_type_to_json_schema` 的集成将在后续版本中落地。
+- **每个模块只发射第一个 `@service` 类** —— 其余 service 请拆到独立模块以生成独立包。
+- **非 dataclass 的 `__init__` 参数不做自省** —— 仅类级注解字段会成为 config key；其他类回退到 `pickInitArgs` 透传。
+- **`@capability` / `@guard` / `@restrict_tools` / `@system_prompt_section` 的发射尚未接线** —— 这些装饰器会被解析但暂不产生生成代码。

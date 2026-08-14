@@ -1,40 +1,37 @@
 /**
  * TypeScript runtime for the Python Capability Bridge. One Service Provider
- * (`PythonBridgeService`, registered as `ctx.pythonBridge`) owns a single
- * spawned Python interpreter; generated bridge packages call
- * `ctx.pythonBridge.spawn()` to obtain a {@link PythonBridge} client bound to
- * a particular module and class.
+ * (`PythonBridgeService`, registered as `ctx.pythonBridge`) owns every spawned
+ * Python interpreter; generated bridge packages call `ctx.pythonBridge.spawn()`
+ * to obtain a {@link PythonBridge} client bound to one module/class pair.
  *
- * The transport reuses `@deepseek-ai/dsh-sdk-protocol` `JsonRpcLineTransport` —
- * newline-delimited JSON-RPC 2.0 over stdio. Process lifecycle (graceful
- * shutdown, SIGTERM → SIGKILL ladder) delegates to
- * `@deepseek-ai/dsh-subprocess` through `scrubbedParentEnv()` for credential
- * scrubbing.
+ * The bridge owns its spawn the same way SDK-managed transports do (see the
+ * `dsh-subprocess` README, "SDK-managed spawns remain outside"): a long-lived
+ * `node:child_process` running `python -u -m dsh_bridge.runtime <module>`,
+ * framed by `@deepseek-ai/dsh-sdk-protocol` `JsonRpcLineTransport` over the
+ * child's stdio. Environment policy stays single-sourced through
+ * `scrubbedParentEnv()`; the teardown ladder is `shutdown` notification →
+ * stdin EOF → SIGTERM → grace → SIGKILL, mirroring the SDK client README.
  *
  * @module @deepseek-ai/dsh-python-bridge-runtime
  */
 
+import { spawn as spawnChildProcess } from 'node:child_process'
 import { Context, Service } from '@deepseek-ai/cordis'
 import {
   JsonRpcLineTransport,
   JsonRpcResponseError,
   type JsonRpcTransportPeer,
 } from '@deepseek-ai/dsh-sdk-protocol'
-import {
-  scrubbedParentEnv,
-  type SubprocessHandle,
-  type SubprocessSpawnSpec,
-  type SubprocessStdio,
-} from '@deepseek-ai/dsh-subprocess'
+import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
-/** Sandbox policy the bridge passes through to `ctx.subprocess.spawn`. */
+/** Sandbox policy forwarded to `ctx.sandbox.confine()` when the seam is loaded. */
 export type PythonBridgeSandbox = 'read-only' | 'workspace-write' | 'danger-full-access'
 
-/** Optional reconnect policy matching the spec §6.7 vocabulary. */
+/** Reconnect policy matching the spec §6.7 vocabulary (defaults shown). */
 export interface PythonBridgeReconnectOptions {
   /** Whether automatic reconnect is enabled (default: true). */
   enabled?: boolean
@@ -42,7 +39,7 @@ export interface PythonBridgeReconnectOptions {
   initialDelayMs?: number
   /** Maximum backoff delay in milliseconds (default: 30000). */
   maxDelayMs?: number
-  /** Maximum number of reconnect attempts before failing (default: 10). */
+  /** Maximum reconnect attempts before the bridge stays down (default: 10). */
   maxAttempts?: number
 }
 
@@ -54,19 +51,19 @@ export interface PythonBridgeSpawnSpec {
   className?: string
   /** Extra top-level callables to register (the runtime's `--function` flag). */
   functions?: string[]
-  /** Optional JSON object forwarded as `__init__` kwargs to the class. */
+  /** Optional JSON-serializable object forwarded as `__init__` kwargs to the class. */
   initArgs?: Record<string, unknown>
-  /** pip dependencies to install before running (currently advisory only). */
+  /** pip dependencies the deployment must provide (advisory; never auto-installed). */
   pipDeps?: string[]
   /** Python interpreter binary (default: `python`). */
   pythonBin?: string
   /** Working directory for the child process. */
   cwd?: string
-  /** Sandbox policy for `ctx.subprocess.spawn`. */
+  /** Sandbox policy for `ctx.sandbox.confine()` when the seam is loaded. */
   sandbox?: PythonBridgeSandbox
   /** Reconnect policy (default: enabled with exponential backoff). */
   reconnect?: PythonBridgeReconnectOptions
-  /** Grace period in milliseconds before SIGKILL escalation (default: 3000). */
+  /** Grace period in milliseconds for each teardown ladder step (default: 3000). */
   graceMs?: number
   /** Maximum threads the Python runtime may use for synchronous calls. */
   maxThreads?: number
@@ -108,26 +105,54 @@ export class PythonBridgeError extends Error {
   }
 }
 
-/** Per-bridge event delivered to TypeScript consumers (`ctx.on('python/...', …)`). */
+/** Per-bridge event delivered to TypeScript consumers of {@link PythonBridge.onEvent}. */
 export interface PythonBridgeEventEnvelope {
   /** Wire event name (e.g. `session/event`). */
   event: string
-  /** Event payload (validated to be a JSON object by the runtime). */
+  /** Event payload as forwarded by the Python side. */
   payload: unknown
   /** Module path that registered the listener. */
   module: string
 }
 
+/** One `bridge/log` entry forwarded from Python logging or proxied stdout. */
+export interface PythonBridgeLogEntry {
+  level: string
+  source: string
+  message: string
+}
+
+/**
+ * Transport surface the bridge consumes. `JsonRpcLineTransport` satisfies it;
+ * tests substitute a mock implementing the same methods.
+ */
+export interface PythonBridgeTransport extends JsonRpcTransportPeer {
+  start?(): void
+  close?(): void
+  onRequest(handler: (method: string, params: Record<string, unknown>) => Promise<unknown>): void
+  onNotification(handler: (method: string, params: Record<string, unknown>) => void): void
+}
+
+/** Minimal child-process surface the bridge consumes (tests inject fakes). */
+export interface PythonBridgeChild {
+  stdin: NodeJS.WritableStream | null
+  stdout: NodeJS.ReadableStream | null
+  stderr: NodeJS.ReadableStream | null
+  kill(signal?: NodeJS.Signals | number): boolean
+  once(event: 'exit', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
+  removeListener(event: 'exit', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
+}
+
 /** Optional override hooks for tests / alternative transports. */
 export interface PythonBridgeInternals {
-  /** Inject a custom transport (used by the test suite). */
-  transport?: JsonRpcTransportPeer
-  /** Inject a custom subprocess handle (used by the test suite). */
-  handle?: SubprocessHandle
+  /** Substitute a pre-built transport (skips the real child spawn when paired with no child). */
+  transport?: PythonBridgeTransport
+  /** Substitute a child-process factory for the real `node:child_process.spawn`. */
+  spawnFn?: (argv: readonly string[], options: { cwd: string; env: Record<string, string> }) => PythonBridgeChild
 }
 
 // ---------------------------------------------------------------------------
-// PythonBridgeService — owns the spawned Python child processes.
+// PythonBridgeService — owns every spawned Python child.
 // ---------------------------------------------------------------------------
 
 declare module '@deepseek-ai/cordis' {
@@ -138,12 +163,10 @@ declare module '@deepseek-ai/cordis' {
 
 /**
  * Cordis service that owns one Python child process per {@link PythonBridge}
- * handle. Disposing the service terminates all live children.
+ * handle. Disposing the service shuts down every live child.
  *
- * Service Providers are minimal: configuration is delegated to the generated
- * bridge packages that call `spawn()` with their module/class pair. The
- * service owns the lifecycle so child processes reach quiescence on
- * `dispose()`.
+ * The service declares no required injections: the bridge owns its spawn, and
+ * the optional sandbox seam is read through `ctx.get('sandbox')`.
  */
 export class PythonBridgeService extends Service {
   private readonly children = new Set<PythonBridge>()
@@ -158,7 +181,7 @@ export class PythonBridgeService extends Service {
    * child; disposing it terminates the process.
    *
    * @param spec - module path, optional class, init args, sandbox, and reconnect policy.
-   * @param internals - optional transport/handle overrides for tests.
+   * @param internals - optional transport/spawn overrides for tests.
    * @returns the bound {@link PythonBridge}.
    */
   spawn(spec: PythonBridgeSpawnSpec, internals?: PythonBridgeInternals): PythonBridge {
@@ -168,6 +191,7 @@ export class PythonBridgeService extends Service {
     return bridge
   }
 
+  /** Shut down every live bridge and await their teardown ladders. */
   async dispose(): Promise<void> {
     const bridges = [...this.children]
     await Promise.allSettled(bridges.map(b => b.shutdown()))
@@ -181,31 +205,48 @@ export default PythonBridgeService
 // PythonBridge — per-spawn client surface.
 // ---------------------------------------------------------------------------
 
-type PendingRequest = {
-  resolve: (value: unknown) => void
-  reject: (error: Error) => void
-  signal?: AbortSignal
+/** Default per-step teardown grace (matches `@deepseek-ai/dsh-bash-local` `DEFAULT_GRACE_MS`). */
+const DEFAULT_GRACE_MS = 3_000
+
+/** Default reconnect policy per spec §6.7. */
+const RECONNECT_DEFAULTS = {
+  enabled: true,
+  initialDelayMs: 500,
+  maxDelayMs: 30_000,
+  maxAttempts: 10,
+} as const
+
+/** Number of trailing stderr lines retained for worker-exit diagnostics. */
+const STDERR_RING_LINES = 100
+
+interface ChildExit {
+  code: number | null
+  signal: NodeJS.Signals | null
 }
 
 /**
- * Per-spawn client. Owns its transport and child process handle; methods
- * called on a disposed bridge reject with {@link PythonBridgeError} of kind
- * `bridge-down`.
+ * Per-spawn client. Owns its child process and transport; methods called on a
+ * disposed or not-yet-initialized bridge reject with {@link PythonBridgeError}
+ * of kind `bridge-down`; calls in flight when the child exits reject with
+ * kind `worker-exit` (`-32011`).
  */
 export class PythonBridge {
   private readonly spec: PythonBridgeSpawnSpec
   private readonly ctx: Context
   private readonly internals: PythonBridgeInternals
-  private transport: JsonRpcTransportPeer | undefined
-  private handle: SubprocessHandle | undefined
-  private readonly pending = new Map<string, PendingRequest>()
-  private readonly notifications: Array<{ method: string; payload: unknown }> = []
+  private child: PythonBridgeChild | undefined
+  private transport: PythonBridgeTransport | undefined
+  private exitPromise: Promise<ChildExit> | undefined
+  private resolveExit: ((exit: ChildExit) => void) | undefined
   private initialized = false
   private manifest: PythonBridgeManifest | undefined
   private disposed = false
   private reconnectAttempt = 0
-  private readonly reconnectListeners = new Set<(envelope: PythonBridgeEventEnvelope) => void>()
-  private readonly logListeners = new Set<(entry: { level: string; source: string; message: string }) => void>()
+  private reconnectTimer: ReturnType<typeof setTimeout> | undefined
+  private lastReadyAt = 0
+  private readonly stderrRing: string[] = []
+  private readonly eventListeners = new Set<(envelope: PythonBridgeEventEnvelope) => void>()
+  private readonly logListeners = new Set<(entry: PythonBridgeLogEntry) => void>()
   private disposedCallbacks: Array<() => void> = []
 
   /** The manifest returned by the Python side during initialization. */
@@ -213,7 +254,7 @@ export class PythonBridge {
     return this.manifest
   }
 
-  /** Whether the bridge is currently initialized and ready for calls. */
+  /** Whether the bridge completed its initialize handshake and is not disposed. */
   get ready(): boolean {
     return this.initialized && !this.disposed
   }
@@ -226,100 +267,116 @@ export class PythonBridge {
   }
 
   /**
-   * Register a listener for events delivered from Python. The Python side
-   * forwards Cordis events to every `@on`-decorated listener; the same
-   * envelopes arrive here as a fire-and-forget notification stream.
-   *
-   * @param handler - one envelope per Cordis event the Python side handles.
+   * Subscribe to events the Python side forwards (`event/deliver` echoes).
+   * @param handler - one envelope per delivered event.
    * @returns an unsubscribe function.
    */
   onEvent(handler: (envelope: PythonBridgeEventEnvelope) => void): () => void {
-    this.reconnectListeners.add(handler)
-    return () => this.reconnectListeners.delete(handler)
+    this.eventListeners.add(handler)
+    return () => this.eventListeners.delete(handler)
   }
 
   /**
-   * Register a listener for Python logging routed through the bridge.
-   *
-   * @param handler - one entry per `bridge/log` notification.
+   * Subscribe to Python logging and proxied stdout (`bridge/log`).
+   * @param handler - one entry per log notification.
    * @returns an unsubscribe function.
    */
-  onLog(handler: (entry: { level: string; source: string; message: string }) => void): () => void {
+  onLog(handler: (entry: PythonBridgeLogEntry) => void): () => void {
     this.logListeners.add(handler)
     return () => this.logListeners.delete(handler)
   }
 
-  /** Register a one-shot callback fired when the bridge is disposed. */
+  /** Register a one-shot callback fired when the bridge finishes disposal. */
   onceDisposed(callback: () => void): void {
     this.disposedCallbacks.push(callback)
   }
 
   /**
-   * Issue one synchronous call against the Python child.
+   * Issue one call against the Python child.
    *
-   * @param method - the wire method name (e.g. `embed` for `@provide_method`).
+   * @param method - the wire method name (e.g. `embed` for a `@provide_method`).
    * @param params - keyword arguments serialized as a JSON object.
-   * @param signal - optional abort signal; aborting rejects immediately.
-   * @returns the resolved result.
+   * @param signal - optional abort signal forwarded to the transport.
+   * @returns the resolved result; rejects with {@link PythonBridgeError}.
    */
-  call(method: string, params: Record<string, unknown> = {}, signal?: AbortSignal): Promise<unknown> {
-    if (this.disposed) {
-      return Promise.reject(new PythonBridgeError('bridge disposed', 'bridge-down', -32010))
+  async call(method: string, params: Record<string, unknown> = {}, signal?: AbortSignal): Promise<unknown> {
+    const transport = this.transport
+    if (this.disposed || !this.initialized || !transport) {
+      throw new PythonBridgeError(
+        `python bridge is not ready (module=${this.spec.module})`,
+        'bridge-down',
+        -32010,
+      )
     }
-    if (!this.initialized) {
-      return Promise.reject(new PythonBridgeError('bridge not initialized', 'bridge-down', -32010))
-    }
-    if (!this.transport) {
-      return Promise.reject(new PythonBridgeError('bridge transport unavailable', 'bridge-down', -32010))
-    }
-    return this.transport.request(method, params, signal) as Promise<unknown>
+    const request = transport.request(method, params, signal).catch((error: unknown) => {
+      throw toPythonBridgeError(error)
+    })
+    // A child exit mid-call must classify as worker-exit, not a generic
+    // transport failure, so callers can distinguish crashes from peer errors.
+    if (!this.exitPromise) return request
+    return Promise.race([request, this.exitPromise.then(exit => {
+      throw new PythonBridgeError(
+        `python worker exited during call (module=${this.spec.module}, ${describeExit(exit)})${this.stderrTail()}`,
+        'worker-exit',
+        -32011,
+      )
+    })])
   }
 
   /**
-   * Send a fire-and-forget notification to the Python side. Errors are not
-   * reported back to the caller.
+   * Send a fire-and-forget notification to the Python side. Dropped when the
+   * bridge is not ready (notifications carry no caller-visible failure).
    */
   notify(method: string, params?: Record<string, unknown>): void {
-    if (!this.transport || !this.initialized) return
+    if (!this.transport || !this.initialized || this.disposed) return
     this.transport.notify(method, params ?? {})
   }
 
   /**
-   * Gracefully shut down the bridge: send a `shutdown` notification, then
-   * wait up to `graceMs` (default 3000) before terminating the child.
+   * Graceful teardown ladder: `shutdown` notification → stdin EOF → wait
+   * `graceMs` → SIGTERM → wait `graceMs` → SIGKILL. Idempotent.
    */
   async shutdown(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
-    this.transport?.notify('shutdown', {})
-    this.failPending(new PythonBridgeError('bridge shutdown', 'bridge-down', -32010))
-    this.transport?.close?.()
-    const handle = this.handle
-    if (handle && this.ctx.has('subprocess')) {
-      handle.terminate()
-      try {
-        await handle.waitForExit()
-      } catch {
-        // Subprocess already exited or terminated; nothing to wait on.
+    if (this.reconnectTimer !== undefined) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = undefined
+    }
+    this.initialized = false
+    try {
+      this.transport?.notify('shutdown', {})
+    } catch { /* transport may already be broken; the ladder continues */ }
+    const child = this.child
+    if (child) {
+      const graceMs = this.spec.graceMs ?? DEFAULT_GRACE_MS
+      try { child.stdin?.end() } catch { /* stdin may already be closed */ }
+      if (!(await this.waitForExit(graceMs))) {
+        child.kill('SIGTERM')
+        if (!(await this.waitForExit(graceMs))) {
+          child.kill('SIGKILL')
+          await this.waitForExit(graceMs)
+        }
       }
     }
+    this.transport?.close?.()
+    this.transport = undefined
+    this.child = undefined
     for (const callback of this.disposedCallbacks) {
-      try { callback() } catch { /* disposal listeners may throw — ignore */ }
+      try { callback() } catch { /* disposal listeners must not break teardown */ }
     }
     this.disposedCallbacks = []
   }
 
   // -------------------------------------------------------------------------
-  // Internal: spawn, transport plumbing, reconnect.
+  // Internal: spawn, handshake, exit handling, reconnect.
   // -------------------------------------------------------------------------
 
   private spawnChild(): void {
-    const handle = this.internals.handle
-    const transport = this.internals.transport
-    if (handle && transport) {
-      this.handle = handle
-      this.transport = transport
-      this.wireTransport(transport)
+    // Injected-transport path (tests): no child, no exit ladder.
+    if (this.internals.transport) {
+      this.transport = this.internals.transport
+      this.wireTransport(this.transport)
       void this.initialize()
       return
     }
@@ -328,52 +385,47 @@ export class PythonBridge {
     const env = this.buildEnv()
     const cwd = this.spec.cwd ?? process.cwd()
 
-    let spawn: SubprocessSpawnSpec
+    const spawnFn = this.internals.spawnFn ?? ((a: readonly string[], o: { cwd: string; env: Record<string, string> }) =>
+      spawnChildProcess(a[0], [...a.slice(1)], { cwd: o.cwd, env: o.env, stdio: ['pipe', 'pipe', 'pipe'] }) as unknown as PythonBridgeChild)
+
+    let child: PythonBridgeChild
     try {
-      spawn = this.ctx.subprocess.spawn({
-        argv,
-        cwd,
-        env,
-        stdio: this.stdio(),
-        graceMs: this.spec.graceMs ?? 3000,
-      })
-      // Touch ctx.subprocess to ensure it's loaded; the subprocess service
-      // owns the live SubprocessHandle but we receive a promise-like spec
-      // back. Some implementations return a synchronous handle.
-      this.handle = (spawn as unknown) as SubprocessHandle
+      child = spawnFn(argv, { cwd, env })
     } catch (error) {
-      this.failPending(error instanceof Error ? error : new Error(String(error)))
-      throw error
+      this.scheduleReconnect()
+      throw toPythonBridgeError(error)
     }
+    this.child = child
+    this.exitPromise = new Promise<ChildExit>(resolve => {
+      this.resolveExit = resolve
+    })
+    const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+      child.removeListener('exit', onExit)
+      this.onChildExit({ code, signal })
+    }
+    child.once('exit', onExit)
 
-    if (!this.handle) {
-      this.failPending(new PythonBridgeError('subprocess handle unavailable', 'bridge-down', -32010))
+    child.stderr?.on('data', (chunk: Buffer | string) => {
+      for (const line of String(chunk).split('\n')) {
+        if (!line) continue
+        this.stderrRing.push(line)
+        if (this.stderrRing.length > STDERR_RING_LINES) this.stderrRing.shift()
+      }
+    })
+
+    if (!child.stdout || !child.stdin) {
+      this.onChildExit({ code: null, signal: null })
       return
     }
-
-    const collected = this.handle.collected
-    const stdout = collected?.stdout
-    if (!stdout) {
-      this.failPending(new PythonBridgeError('subprocess did not expose stdout', 'bridge-down', -32010))
-      return
-    }
-
-    // The subprocess service exposes a Readable stream for stdout when the
-    // caller asks for a raw pipe. Build a duplex transport over the handle.
-    // In tests we substitute an in-memory transport; in production we read
-    // from `handle.stdout`.
-    this.transport = this.buildTransportFromHandle(this.handle)
-    if (!this.transport) {
-      this.failPending(new PythonBridgeError('transport construction failed', 'bridge-down', -32010))
-      return
-    }
+    this.transport = new JsonRpcLineTransport(child.stdout, child.stdin)
+    this.transport.start()
     this.wireTransport(this.transport)
     void this.initialize()
   }
 
-  private buildArgv(): string[] {
+  private buildArgv(): readonly string[] {
     const python = this.spec.pythonBin ?? 'python'
-    return [
+    const argv = [
       python,
       '-u',
       '-m',
@@ -384,91 +436,99 @@ export class PythonBridge {
       ...(this.spec.initArgs ? ['--init-args', JSON.stringify(this.spec.initArgs)] : []),
       ...(this.spec.maxThreads ? ['--max-threads', String(this.spec.maxThreads)] : []),
     ]
+    // Optional sandbox confinement: only when the seam is loaded does the
+    // policy apply; the bridge never silently bypasses a confinement failure.
+    const sandbox = this.ctx.get?.('sandbox') as { confine?(argv: readonly string[], policy: { mode: PythonBridgeSandbox }): readonly string[] } | undefined
+    if (this.spec.sandbox && sandbox?.confine) {
+      return sandbox.confine(argv, { mode: this.spec.sandbox })
+    }
+    return argv
   }
 
   private buildEnv(): Record<string, string> {
-    const base = scrubbedParentEnv()
-    return { ...base, PYTHONUNBUFFERED: '1' }
+    return { ...scrubbedParentEnv(), PYTHONUNBUFFERED: '1' }
   }
 
-  private stdio(): SubprocessStdio {
-    return {
-      stdin: 'pipe',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    }
-  }
-
-  private buildTransportFromHandle(_handle: SubprocessHandle): JsonRpcTransportPeer | undefined {
-    // The subprocess service exposes a Readable on `handle.stdout` for raw
-    // pipe consumers and a Writable on `handle.stdin`. We assemble a thin
-    // bridge that forwards writes to the subprocess stdin pipe and frames
-    // incoming data into the same newline-delimited JSON-RPC shape used by
-    // `JsonRpcLineTransport`. The full integration with the subprocess
-    // service is exercised through the dsh-harness composition; the runtime
-    // test suite uses `internals.transport` to inject a mock.
-    return undefined
-  }
-
-  private wireTransport(transport: JsonRpcTransportPeer): void {
-    transport.onRequest(async (method, params) => {
+  private wireTransport(transport: PythonBridgeTransport): void {
+    transport.onRequest(async (method) => {
       // Server→client requests are dead capability per spec §6.5; reject any
-      // inbound call so the wire is symmetric.
-      throw new Error(`python bridge does not accept server-initiated requests: ${method}`)
+      // inbound call so the wire stays symmetric.
+      throw new Error(`python bridge does not accept worker-initiated requests: ${method}`)
     })
     transport.onNotification((method, params) => {
       this.dispatchNotification(method, params)
     })
-    // The JsonRpcLineTransport wires `onRequest`/`onNotification` here. We
-    // also patch in `request` so the per-call caller sees a clean surface.
-    this.pending.clear()
-    for (const { reject } of this.pending.values()) {
-      reject(new PythonBridgeError('bridge reinitialized', 'bridge-down', -32010))
-    }
   }
 
   private async initialize(): Promise<void> {
-    if (!this.transport) return
+    const transport = this.transport
+    if (!transport) return
     try {
-      const result = (await this.transport.request('initialize', {
+      const result = (await transport.request('initialize', {
         cwd: this.spec.cwd ?? process.cwd(),
-        env: this.spec.sandbox ?? 'workspace-write',
       })) as PythonBridgeInitializeResult
+      if (this.disposed) return
       this.manifest = result.manifest
       this.initialized = true
-      this.reconnectAttempt = 0
+      this.lastReadyAt = Date.now()
     } catch (error) {
-      this.failPending(error instanceof Error ? error : new Error(String(error)))
+      if (this.disposed) return
+      // Handshake failure (import error, crash on boot): the child typically
+      // exits right after, and onChildExit owns the reconnect decision.
+      if (this.child) return
       this.scheduleReconnect()
+      throw toPythonBridgeError(error)
     }
   }
 
-  private scheduleReconnect(): void {
+  private onChildExit(exit: ChildExit): void {
+    const resolve = this.resolveExit
+    this.resolveExit = undefined
+    resolve?.(exit)
+    this.initialized = false
+    this.manifest = undefined
+    this.transport?.close?.()
+    this.transport = undefined
+    this.child = undefined
     if (this.disposed) return
-    const reconnect = this.spec.reconnect ?? {}
-    if (reconnect.enabled === false) return
-    const initial = reconnect.initialDelayMs ?? 500
-    const max = reconnect.maxDelayMs ?? 30_000
-    const maxAttempts = reconnect.maxAttempts ?? 10
-    if (this.reconnectAttempt >= maxAttempts) {
-      return
+    this.scheduleReconnect()
+  }
+
+  private scheduleReconnect(): void {
+    if (this.disposed || this.reconnectTimer !== undefined) return
+    const reconnect = { ...RECONNECT_DEFAULTS, ...this.spec.reconnect }
+    if (!reconnect.enabled) return
+    // A bridge that stayed up for at least maxDelayMs earned a fresh budget.
+    if (this.lastReadyAt > 0 && Date.now() - this.lastReadyAt >= reconnect.maxDelayMs) {
+      this.reconnectAttempt = 0
     }
-    const delay = Math.min(initial * 2 ** this.reconnectAttempt, max)
+    if (this.reconnectAttempt >= reconnect.maxAttempts) return
+    const delay = Math.min(reconnect.initialDelayMs * 2 ** this.reconnectAttempt, reconnect.maxDelayMs)
     this.reconnectAttempt += 1
-    setTimeout(() => {
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined
       if (!this.disposed) this.spawnChild()
     }, delay)
   }
 
+  private waitForExit(graceMs: number): Promise<boolean> {
+    const exitPromise = this.exitPromise
+    if (!exitPromise) return Promise.resolve(true)
+    return Promise.race([
+      exitPromise.then(() => true),
+      new Promise<false>(resolve => setTimeout(() => resolve(false), graceMs)),
+    ])
+  }
+
   private dispatchNotification(method: string, params: Record<string, unknown>): void {
     if (method === 'bridge/log') {
-      const entry = {
+      const entry: PythonBridgeLogEntry = {
         level: typeof params.level === 'string' ? params.level : 'INFO',
         source: typeof params.source === 'string' ? params.source : 'dsh_bridge',
         message: typeof params.message === 'string' ? params.message : '',
       }
       for (const handler of this.logListeners) {
-        try { handler(entry) } catch { /* ignore listener errors */ }
+        try { handler(entry) } catch { /* listener errors must not break the wire */ }
       }
       return
     }
@@ -478,25 +538,29 @@ export class PythonBridge {
         payload: params.payload,
         module: this.spec.module,
       }
-      for (const handler of this.reconnectListeners) {
-        try { handler(envelope) } catch { /* ignore listener errors */ }
+      for (const handler of this.eventListeners) {
+        try { handler(envelope) } catch { /* listener errors must not break the wire */ }
       }
       return
     }
     // Unknown notifications are dropped (per spec §6.5).
   }
 
-  private failPending(error: Error): void {
-    for (const pending of this.pending.values()) {
-      pending.reject(error)
-    }
-    this.pending.clear()
+  private stderrTail(): string {
+    if (this.stderrRing.length === 0) return ''
+    return `\nstderr tail:\n${this.stderrRing.slice(-20).join('\n')}`
   }
 }
 
+/** Render one exit fact pair for diagnostics. */
+function describeExit(exit: ChildExit): string {
+  if (exit.signal !== null) return `signal=${exit.signal}`
+  return `code=${exit.code ?? 'null'}`
+}
+
 /**
- * Normalize a `JsonRpcResponseError` into a `PythonBridgeError`. The TS-side
- * surface preserves the wire `code` and `data.kind` per spec §6.5.
+ * Normalize any rejection into a {@link PythonBridgeError}. The TS surface
+ * preserves the wire `code` and `data.kind` per spec §6.5.
  */
 export function toPythonBridgeError(error: unknown): PythonBridgeError {
   if (error instanceof PythonBridgeError) return error
