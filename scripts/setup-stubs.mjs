@@ -15,7 +15,7 @@
  * Inside the real monorepo these stubs are NOT used: pnpm workspace
  * resolution binds the genuine packages.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -53,5 +53,13 @@ for (const [name, file] of STUBS) {
   }, null, 2) + '\n')
   writeFileSync(join(dir, 'index.mjs'), target)
   console.log(`stubbed ${name}`)
+}
+
+// The integration setup symlinks package-local node_modules to the REAL
+// monorepo wrappers; remove those links so the offline e2e resolves the
+// stubs above instead.
+for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen']) {
+  const link = join(root, 'packages/bridge', pkg, 'node_modules')
+  rmSync(link, { recursive: true, force: true })
 }
 console.log('standalone stubs ready')

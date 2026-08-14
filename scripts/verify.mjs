@@ -15,6 +15,7 @@
  * Exits non-zero when any step fails.
  */
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -43,6 +44,33 @@ for (const [name, command, args, options] of steps) {
     failed++
     console.error(`=== ${name}: FAILED (exit ${result.status}) ===`)
   }
+}
+
+// Optional integration tier: REAL monorepo sources + strict tsc -b. Runs only
+// when the monorepo checkout and the extracted typescript are present; both
+// are environment prerequisites documented in tests/integration/.
+const monorepo = process.env.DSH_MONOREPO ?? '/home/chad/workspace/deepseek-harness'
+const tsc = process.env.DSH_TSC ?? '/tmp/dsh-externals/manual/typescript-6.0.3/package/bin/tsc'
+if (existsSync(join(monorepo, 'vendor/cordis/src/index.ts')) && existsSync(tsc)) {
+  const integrationSteps = [
+    ['integration harness setup', 'node', ['scripts/setup-integration.mjs']],
+    ['REAL-composition (real Loader + real schemastery + real ToolRuntime)', 'node', ['--experimental-transform-types', 'tests/integration/real-composition.mjs']],
+    ['strict typecheck (tsc -b in monorepo)', 'node', ['scripts/typecheck-integration.mjs']],
+  ]
+  for (const [name, command, args] of integrationSteps) {
+    console.log(`\n=== ${name} ===`)
+    const result = spawnSync(command, args, {
+      cwd: root,
+      stdio: 'inherit',
+      env: { ...process.env, NODE_OPTIONS: '--no-warnings' },
+    })
+    if (result.status !== 0) {
+      failed++
+      console.error(`=== ${name}: FAILED (exit ${result.status}) ===`)
+    }
+  }
+} else {
+  console.log('\n=== integration tier skipped (set DSH_MONOREPO / DSH_TSC to enable) ===')
 }
 
 if (failed > 0) {

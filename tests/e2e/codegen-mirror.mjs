@@ -84,6 +84,11 @@ assert(index.contents.includes('modelPath: string'), 'modelPath config field')
 assert(index.contents.includes('batchSize?: number'), 'batchSize config field')
 assert(index.contents.includes('batchSize: z.number().default(32)'), 'batchSize zod default')
 assert(index.contents.includes('precision: z.string().default("float32")'), 'precision zod default')
+assert(index.contents.includes('modelPath: z.string().required()'), 'modelPath required (schemastery semantics)')
+assert(index.contents.includes('module: z.string().required()'), 'module required (schemastery semantics)')
+assert(!index.contents.includes('.optional()'), 'no .optional() — real schemastery lacks it')
+assert(index.contents.includes(`z.union(['read-only', 'workspace-write', 'danger-full-access'] as const)`),
+  'sandbox as literal union (real schemastery has no z.enum)')
 assert(index.contents.includes('initArgs: { model_path: config.modelPath, batch_size: config.batchSize, precision: config.precision }'),
   'initArgs snake_case mapping')
 assert(index.contents.includes(`className: config.className ?? 'MLProvider'`), 'className fallback')

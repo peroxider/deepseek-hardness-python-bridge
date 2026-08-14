@@ -1,22 +1,31 @@
 /**
- * Runtime invariants for `@deepseek-ai/dsh-python-bridge-runtime`.
- *
- * The bridge owns no Cordis event/data relations of its own: the runtime is
- * a process-management seam, not a model-visible surface. Empty companion
- * `No runtime invariant:` justifications are acceptable per the package
- * invariant policy when the package owns no event/data relations.
- *
+ * Package-owned invariant companion for `@deepseek-ai/dsh-python-bridge-runtime`.
  * @module @deepseek-ai/dsh-python-bridge-runtime/invariant
  */
 
-import type { InvariantCheck } from '@deepseek-ai/dsh-invariants'
+/* jscpd:ignore-start */
+import type { Context } from '@deepseek-ai/cordis'
+import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-export const manifest = '@deepseek-ai/dsh-python-bridge-runtime' as const
+const PACKAGE_NAME = '@deepseek-ai/dsh-python-bridge-runtime'
 
-export const checks: InvariantCheck[] = [
-  // No runtime invariant: this package owns no event/data relations; the
-  // Python bridge is a process-management seam whose only side effects are
-  // stdout frames and subprocess lifecycle. Subscribers observe Cordis
-  // events through `ctx.on(...)` regardless of which runtime owns them, so
-  // there is no bridge-specific event invariant to enforce.
-]
+/** Cordis companion plugin name. */
+export const name = 'python-bridge-runtime-invariant'
+/** Service required before the companion can reserve package ownership. */
+export const inject = ['invariants']
+
+/**
+ * No runtime invariant: the bridge is a process-management seam whose only
+ * side effects are child-process stdio frames and lifecycle. It owns no
+ * Cordis event stream or mutable data relation; subscribers observe Cordis
+ * events through `ctx.on(...)` regardless of which runtime owns them.
+ */
+const install: InvariantInstaller = () => {}
+
+/**
+ * Register this package's invariant companion.
+ * @param ctx - Cordis context carrying the invariant service.
+ * @returns the installed registration's disposer after setup succeeds.
+ */
+export const apply = (ctx: Context): Promise<() => void> =>
+  Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))

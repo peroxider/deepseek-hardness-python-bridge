@@ -48,6 +48,9 @@ def _fake_embedding(text: str, dim: int = 768) -> list[float]:
     },
     output_schema={
         "type": "object",
+        # dsh-tools' JSON Schema compiler requires an explicit
+        # additionalProperties on every object schema.
+        "additionalProperties": False,
         "properties": {
             "output_path": {"type": "string"},
             "bytes_written": {"type": "integer"},

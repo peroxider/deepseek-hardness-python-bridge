@@ -16,6 +16,7 @@
  */
 
 import { spawn as spawnChildProcess } from 'node:child_process'
+import type { Readable, Writable } from 'node:stream'
 import { Context, Service } from '@deepseek-ai/cordis'
 import {
   JsonRpcLineTransport,
@@ -127,17 +128,21 @@ export interface PythonBridgeLogEntry {
  * tests substitute a mock implementing the same methods.
  */
 export interface PythonBridgeTransport extends JsonRpcTransportPeer {
-  start?(): void
-  close?(): void
+  /** Send a request and await its response, honoring an optional abort signal
+   * (the concrete `JsonRpcLineTransport.request` signature; the base
+   * `JsonRpcTransportPeer` interface omits `signal`). */
+  request(method: string, params: object, signal?: AbortSignal): Promise<unknown>
+  start(): void
+  close(): void
   onRequest(handler: (method: string, params: Record<string, unknown>) => Promise<unknown>): void
   onNotification(handler: (method: string, params: Record<string, unknown>) => void): void
 }
 
 /** Minimal child-process surface the bridge consumes (tests inject fakes). */
 export interface PythonBridgeChild {
-  stdin: NodeJS.WritableStream | null
-  stdout: NodeJS.ReadableStream | null
-  stderr: NodeJS.ReadableStream | null
+  stdin: Writable | null
+  stdout: Readable | null
+  stderr: Readable | null
   kill(signal?: NodeJS.Signals | number): boolean
   once(event: 'exit', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
   removeListener(event: 'exit', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
@@ -394,8 +399,11 @@ export class PythonBridge {
     const env = this.buildEnv()
     const cwd = this.spec.cwd ?? process.cwd()
 
-    const spawnFn = this.internals.spawnFn ?? ((a: readonly string[], o: { cwd: string; env: Record<string, string> }) =>
-      spawnChildProcess(a[0], [...a.slice(1)], { cwd: o.cwd, env: o.env, stdio: ['pipe', 'pipe', 'pipe'] }) as unknown as PythonBridgeChild)
+    const spawnFn = this.internals.spawnFn ?? ((a: readonly string[], o: { cwd: string; env: Record<string, string> }) => {
+      const executable = a[0]
+      if (executable === undefined) throw new Error('python bridge: spawn argv is empty')
+      return spawnChildProcess(executable, [...a.slice(1)], { cwd: o.cwd, env: o.env, stdio: ['pipe', 'pipe', 'pipe'] }) as unknown as PythonBridgeChild
+    })
 
     let child: PythonBridgeChild
     try {

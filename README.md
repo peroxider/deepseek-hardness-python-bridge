@@ -2,13 +2,15 @@
 
 English | [中文](README.zh.md)
 
-> **Turn any Python module or codebase into a [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) plugin.**
+> **Turn Python modules into [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) plugins.**
 >
-> This repository converts existing Python code — ML pipelines, NumPy/SciPy/pandas/PyTorch/scikit-learn algorithms, imaging tools, custom providers — into first-class dsh plugins that the agent harness can load from `cordis.yml`, inject as Cordis services, register as model-facing tools, and wire into event listeners and capability seams.
+> This repository converts existing Python code — ML pipelines, NumPy/SciPy/pandas/PyTorch/scikit-learn algorithms, imaging tools, custom providers — into first-class dsh plugins that the agent harness loads from `cordis.yml`, injects as Cordis services, registers as model-facing tools, and wires into event listeners and capability seams.
+>
+> **Verified end-to-end against the real deepseek-harness**: a test `cordis.yml` boots through the genuine Cordis Loader with real schemastery Config validation, real `ToolRuntime` registration, and the real event system, driving a real Python child process; the bridge packages and a generated example package pass the monorepo's strict `tsc -b` with zero errors. See [Verification status](#verification-status) for the exact coverage and remaining limits.
 
 ## What it does
 
-DeepSeek Harness's plugin surface is TypeScript-only. This bridge is the path that takes a Python codebase and makes it a native dsh plugin:
+DeepSeek Harness's plugin surface is TypeScript-only. This bridge is the path that takes a Python module and makes it a native dsh plugin:
 
 | Python side | Becomes in deepseek-harness |
 | --- | --- |
@@ -20,6 +22,22 @@ DeepSeek Harness's plugin surface is TypeScript-only. This bridge is the path th
 | `@guard()` / `@restrict_tools()` | Tool policy hooks |
 
 **Zero changes to Python business code** — only decorator annotations and type signatures. A codegen step produces a TypeScript bridge package that spawns a long-lived Python child process and forwards decorated methods through newline-delimited JSON-RPC 2.0 over stdio. The generated plugin receives the same sandboxing, env scrub, approval flow, session log, and persistence as any TypeScript plugin in the dsh composition.
+
+## Verification status
+
+The premise is proven by four verification tiers, all reproducible offline via `node scripts/verify.mjs`:
+
+1. **Python suite** — 43 pytest tests covering decorators, PEP 484 type inference, the JSON-RPC runtime, and real-subprocess integration over stdio.
+2. **Offline TypeScript E2E** — plain-Node assertions (no package install) covering codegen emission (55+ assertions), runtime lifecycle (worker-exit, reconnect, teardown ladder, env scrub), a real `python3` child round-trip, and a generated package mounted on a stub Cordis context.
+3. **REAL-composition** — a test `cordis.yml` booted through the genuine vendored Cordis Loader (`vendor/loader` + `vendor/include`), with real schemastery applying the generated `static Config`, the real `ToolRuntime` holding the registered tool, a real `ctx.emit('session/event')` reaching the Python listener, and `ctx.fiber.dispose()` tearing the child down through the effect disposers.
+4. **Strict typecheck** — `tsc -b` (typescript 6.0.3, monorepo `tsconfig.base.json` flags: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) over the two bridge packages and a generated example package inside the monorepo's project-reference graph: zero errors.
+
+Remaining limits, honestly stated:
+
+- **"Any Python module" means the constrained decorator shape** — keyword-argument decorators with one leading positional name (`@service(name='ml', ...)`). Qualified calls (`@dsh_bridge.service(...)`), import aliases (`from dsh_bridge import service as svc`), and non-keyword arguments are silently ignored by the regex-based parser. Only the first `@service` class per module is emitted; non-dataclass `__init__` parameters are not introspected.
+- **`@capability` / `@guard` / `@restrict_tools` / `@system_prompt_section` are parsed but not emitted** — they produce no generated code yet.
+- **The vitest suites under `packages/bridge/*/tests/` have not run in this environment** (vitest's own dependency closure is unavailable offline); their assertions are mirrored by the plain-Node E2E scripts in `tests/e2e/` and run for real inside the monorepo.
+- **Monorepo integration is verified, not merged** — the deepseek-harness checkout holds the bridge packages plus a `tsconfig.base.json` paths registration as uncommitted working-tree changes from the verification run.
 
 ## Repository layout
 
@@ -133,8 +151,9 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
 ## Testing
 
 ```sh
-# One-command offline verification (stubs, pytest, codegen, lifecycle,
-# real-child runtime E2E, generated-package E2E):
+# One-command verification (stubs, pytest, codegen, lifecycle, real-child
+# runtime E2E, generated-package E2E; plus the REAL-composition and strict
+# typecheck tiers when a monorepo checkout and tsc are available):
 node scripts/verify.mjs
 
 # Python only: 43 tests (decorators, type inference, runtime, real-subprocess integration)
@@ -145,7 +164,7 @@ PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
 
-The standalone repository resolves `@deepseek-ai/*` imports through committed stubs (`tests/stubs/`, materialized by `scripts/setup-stubs.mjs`); inside the deepseek-harness monorepo, pnpm workspace resolution binds the genuine packages and the vitest suites under `packages/bridge/*/tests/` run instead.
+The standalone repository resolves `@deepseek-ai/*` imports through committed stubs (`tests/stubs/`, materialized by `scripts/setup-stubs.mjs`) for the offline tier; the integration tier (`scripts/setup-integration.mjs`, `tests/integration/real-composition.mjs`, `scripts/typecheck-integration.mjs`) binds the genuine monorepo sources instead. Inside the deepseek-harness monorepo, pnpm workspace resolution binds the genuine packages and the vitest suites under `packages/bridge/*/tests/` run there.
 
 ## Non-goals
 

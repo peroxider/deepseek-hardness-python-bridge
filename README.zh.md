@@ -2,13 +2,15 @@
 
 [English](README.md) | 中文
 
-> **将任意 Python 模块/代码库转化为 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 可用的插件。**
+> **将 Python 模块转化为 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 可用的插件。**
 >
 > 本仓库把现有 Python 代码 —— ML 流水线、NumPy/SciPy/pandas/PyTorch/scikit-learn 算法、图像工具、自定义 provider —— 转化为一等公民的 dsh 插件：agent harness 可以从 `cordis.yml` 加载它、把它作为 Cordis service 注入、把它注册为模型可见的工具、并把它接入事件监听与 capability seam。
+>
+> **已对真实 deepseek-harness 完成端到端验证**：测试用 `cordis.yml` 经真实 Cordis Loader 启动，真实 schemastery 校验 Config、真实 `ToolRuntime` 注册工具、真实事件系统转发，驱动真实 Python 子进程；bridge 包与生成的示例包在 monorepo 严格 `tsc -b` 下零错误通过。具体覆盖范围与剩余限制见[验证状态](#验证状态)。
 
 ## 它做什么
 
-DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python 代码库变成 dsh 原生插件的通道：
+DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python 模块变成 dsh 原生插件的通道：
 
 | Python 侧 | 在 deepseek-harness 中变成 |
 | --- | --- |
@@ -20,6 +22,22 @@ DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python �
 | `@guard()` / `@restrict_tools()` | 工具策略钩子 |
 
 **Python 业务代码零改动** —— 只加装饰器注解与类型签名。Codegen 步骤产出一个 TypeScript bridge 包，它派生一个长生命周期的 Python 子进程，并通过 stdio 上的换行符分隔 JSON-RPC 2.0 协议转发装饰过的方法。生成的插件与 dsh 组合中的任何 TypeScript 插件一样，获得相同的沙箱、环境清洗、审批流、会话日志与持久化。
+
+## 验证状态
+
+本仓库的前提由四层验证支撑，均可通过 `node scripts/verify.mjs` 离线复现：
+
+1. **Python 套件** —— 43 个 pytest，覆盖装饰器、PEP 484 类型推断、JSON-RPC 运行时，以及真实子进程 stdio 集成。
+2. **离线 TypeScript E2E** —— 纯 Node 断言（无需安装依赖），覆盖 codegen 发射（55+ 断言）、运行时生命周期（worker-exit、重连、关停阶梯、环境清洗）、真实 `python3` 子进程往返，以及挂载在 stub Cordis context 上的生成包。
+3. **REAL-composition** —— 测试用 `cordis.yml` 经真实 vendored Cordis Loader（`vendor/loader` + `vendor/include`）启动：真实 schemastery 应用生成的 `static Config`，真实 `ToolRuntime` 持有注册的工具，真实 `ctx.emit('session/event')` 到达 Python 监听器，`ctx.fiber.dispose()` 通过 effect disposer 拆毁子进程。
+4. **严格类型检查** —— `tsc -b`（typescript 6.0.3，monorepo `tsconfig.base.json` 标志：`strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`）覆盖两个 bridge 包和生成的示例包，在 monorepo project-reference 图中零错误。
+
+如实陈述的剩余限制：
+
+- **"任意 Python 模块"指受约束的装饰器形状** —— 关键字参数装饰器加一个前置位置名（`@service(name='ml', ...)`）。全限定调用（`@dsh_bridge.service(...)`）、导入别名（`from dsh_bridge import service as svc`）、非关键字参数会被基于正则的解析器**静默忽略**。每个模块只发射第一个 `@service` 类；非 dataclass 的 `__init__` 参数不做自省。
+- **`@capability` / `@guard` / `@restrict_tools` / `@system_prompt_section` 只解析不发射** —— 暂不产生生成代码。
+- **`packages/bridge/*/tests/` 下的 vitest 套件尚未在本环境运行**（vitest 自身依赖闭包离线不可得）；其断言已由 `tests/e2e/` 下的纯 Node 脚本镜像，并在 monorepo 内真实运行。
+- **monorepo 集成已验证但尚未合并** —— deepseek-harness 检出中留有验证产生的未提交工作区改动（bridge 包副本与 `tsconfig.base.json` 的 paths 注册）。
 
 ## 仓库结构
 
@@ -133,7 +151,8 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
 ## 测试
 
 ```sh
-# 一键离线验证（stub、pytest、codegen、生命周期、真实子进程 runtime E2E、生成包 E2E）：
+# 一键验证（stub、pytest、codegen、生命周期、真实子进程 runtime E2E、生成包 E2E；
+# 当 monorepo 检出与 tsc 可用时还会运行 REAL-composition 与严格类型检查层）：
 node scripts/verify.mjs
 
 # 仅 Python：43 个测试（装饰器、类型推断、运行时、真实子进程集成）
@@ -144,7 +163,7 @@ PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
 
-独立仓库通过提交的 stub（`tests/stubs/`，由 `scripts/setup-stubs.mjs` 物化）解析 `@deepseek-ai/*` 导入；在 deepseek-harness monorepo 内，pnpm workspace 解析会绑定真实包，改由 `packages/bridge/*/tests/` 下的 vitest 套件运行。
+独立仓库在离线层通过提交的 stub（`tests/stubs/`，由 `scripts/setup-stubs.mjs` 物化）解析 `@deepseek-ai/*` 导入；集成层（`scripts/setup-integration.mjs`、`tests/integration/real-composition.mjs`、`scripts/typecheck-integration.mjs`）则绑定真实的 monorepo 源码。在 deepseek-harness monorepo 内，pnpm workspace 解析绑定真实包，`packages/bridge/*/tests/` 下的 vitest 套件在那里运行。
 
 ## 非目标
 

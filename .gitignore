@@ -11,5 +11,5 @@ dist/
 .venv/
 .idea/
 .agents/
-node_modules/
+node_modules
 .gen/

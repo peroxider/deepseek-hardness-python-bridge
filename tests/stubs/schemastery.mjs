@@ -1,16 +1,18 @@
 /**
  * Standalone-development stub for `@deepseek-ai/schemastery`.
  *
- * Minimal chainable `z` builder: every call returns a recorder object so the
- * generated bridge packages can be imported and their `static Config`
- * inspected offline. The real schemastery replaces this stub in the monorepo.
+ * Mirrors the REAL schemastery semantics (vendor/schemastery): object
+ * properties are optional unless `.required()`; there is no `.optional()`
+ * method; literal unions replace `z.enum`. Every call returns a recorder
+ * object so generated bridge packages can be imported and their
+ * `static Config` inspected offline.
  */
 function makeSchema(kind, args = {}) {
   return {
     kind,
     args,
     default: (value) => makeSchema(kind, { ...args, default: value }),
-    optional: () => makeSchema(kind, { ...args, optional: true }),
+    required: (value = true) => makeSchema(kind, { ...args, required: value }),
   }
 }
 
@@ -18,9 +20,12 @@ const z = {
   object: (shape) => makeSchema('object', { shape }),
   string: () => makeSchema('string'),
   number: () => makeSchema('number'),
+  natural: () => makeSchema('natural'),
   boolean: () => makeSchema('boolean'),
+  any: () => makeSchema('any'),
   array: (item) => makeSchema('array', { item }),
-  enum: (values) => makeSchema('enum', { values }),
+  union: (values) => makeSchema('union', { values }),
+  const: (value) => makeSchema('const', { value }),
 }
 
 export default z

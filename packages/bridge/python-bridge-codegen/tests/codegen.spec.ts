@@ -177,13 +177,18 @@ def audit(event: str, payload: dict, next_fn) -> None:
     expect(wfIndex.contents).toContain('return next()')
   })
 
-  it('emits dataclass fields as named config keys with defaults', () => {
+  it('emits dataclass fields as named config keys with schemastery-conformant defaults', () => {
     expect(index.contents).toContain('modelPath: string')
     expect(index.contents).toContain('batchSize?: number')
     expect(index.contents).toContain('precision?: string')
     expect(index.contents).toContain('batchSize: z.number().default(32)')
     expect(index.contents).toContain('precision: z.string().default("float32")')
-    expect(index.contents).toContain('modelPath: z.string()')
+    // Real schemastery (vendor/schemastery): properties are optional unless
+    // `.required()`; there is no `.optional()` method and no `z.enum`.
+    expect(index.contents).toContain('modelPath: z.string().required()')
+    expect(index.contents).toContain('module: z.string().required()')
+    expect(index.contents).not.toContain('.optional()')
+    expect(index.contents).toContain(`z.union(['read-only', 'workspace-write', 'danger-full-access'] as const)`)
   })
 
   it('maps init args from camelCase config back to snake_case kwargs', () => {

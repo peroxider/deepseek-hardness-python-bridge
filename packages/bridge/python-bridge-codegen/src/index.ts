@@ -333,7 +333,9 @@ interface DecoratorArgs {
  * failure the raw string is preserved instead.
  */
 function parseDecoratorArgs(text: string): DecoratorArgs {
-  const parts = splitTopLevel(text, ',')
+  // Strip `#` comments first: an apostrophe inside a comment (`dsh-tools'`)
+  // would otherwise corrupt splitTopLevel's string tracking.
+  const parts = splitTopLevel(stripPythonComments(text), ',')
   const kwargs: Record<string, string> = {}
   const jsonKwargs: Record<string, unknown> = {}
   const positionals: string[] = []
@@ -347,7 +349,10 @@ function parseDecoratorArgs(text: string): DecoratorArgs {
     const value = stripQuotes(part.slice(eq + 1).trim())
     kwargs[key] = value
     if (value.startsWith('{') || value.startsWith('[')) {
-      const pyValue = value
+      // Approximate Python literal syntax as JSON: `#` comments, `True` /
+      // `False` / `None` keywords, and trailing commas are normalized. On
+      // parse failure the raw string is preserved instead.
+      const pyValue = stripPythonComments(value)
         .replace(/\bTrue\b/g, 'true')
         .replace(/\bFalse\b/g, 'false')
         .replace(/\bNone\b/g, 'null')
@@ -367,6 +372,32 @@ function stripQuotes(value: string): string {
     return value.slice(1, -1)
   }
   return value
+}
+
+/** Remove `#` comments outside string literals (single/double quoted, with escapes). */
+function stripPythonComments(text: string): string {
+  let out = ''
+  let inString: string | null = null
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inString) {
+      out += ch
+      if (ch === inString && text[i - 1] !== '\\') inString = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      inString = ch
+      out += ch
+      continue
+    }
+    if (ch === '#') {
+      while (i < text.length && text[i] !== '\n') i++
+      if (i < text.length) out += '\n'
+      continue
+    }
+    out += ch
+  }
+  return out
 }
 
 function splitTopLevel(text: string, sep: string): string[] {
@@ -412,14 +443,32 @@ function findNextClass(source: string, after: number): string | undefined {
   const re = /\bclass\s+([A-Za-z_][\w]*)/g
   re.lastIndex = after
   const m = re.exec(source)
-  return m ? m[1] : undefined
+  return m ? group(m, 1) : undefined
 }
 
 function findNextFunction(source: string, after: number): string | undefined {
   const re = /\bdef\s+([A-Za-z_][\w]*)/g
   re.lastIndex = after
   const m = re.exec(source)
-  return m ? m[1] : undefined
+  return m ? group(m, 1) : undefined
+}
+
+/**
+ * Capture-group access for groups that are mandatory when the regex matched.
+ * Under `noUncheckedIndexedAccess`, indexing yields `string | undefined`;
+ * the invariant is owned here instead of asserted at every call site.
+ */
+function group(match: RegExpExecArray, index: number): string {
+  const value = match[index]
+  if (value === undefined) {
+    throw new Error(`codegen: regex matched without mandatory capture group ${index}: ${match[0]}`)
+  }
+  return value
+}
+
+/** Optional capture-group access: the group may be absent by regex design. */
+function optionalGroup(match: RegExpExecArray, index: number): string | undefined {
+  return match[index]
 }
 
 /** One parsed `def` signature: parameters with annotations plus the return annotation. */
@@ -442,7 +491,7 @@ function readFunctionSignature(source: string, after: number): FunctionSignature
   const returnMatch = returnRe.exec(source.slice(closeParen))
   return {
     parameters: parseParameters(paramsText),
-    returnAnnotation: returnMatch ? returnMatch[1].trim() : undefined,
+    returnAnnotation: returnMatch?.[1]?.trim(),
   }
 }
 
@@ -495,15 +544,15 @@ function collectProvideMethods(source: string, className: string, after: number)
   const decRe = /@provide_method\s*\(([^)]*)\)\s*\n\s*def\s+([A-Za-z_][\w]*)\s*\(/g
   let m: RegExpExecArray | null
   while ((m = decRe.exec(body)) !== null) {
-    const { kwargs } = parseDecoratorArgs(m[1])
+    const { kwargs } = parseDecoratorArgs(group(m, 1))
     const openParen = decRe.lastIndex - 1
     const closeParen = matchParen(body, openParen + 1)
     const paramsText = closeParen < 0 ? '' : body.slice(openParen + 1, closeParen)
     const returnMatch = closeParen < 0 ? null : /^\)\s*->\s*([^:]+):/.exec(body.slice(closeParen))
     methods.push({
-      name: m[2],
+      name: group(m, 2),
       parameters: parseParameters(paramsText),
-      returnAnnotation: returnMatch ? returnMatch[1].trim() : undefined,
+      returnAnnotation: returnMatch?.[1]?.trim(),
       timeoutMs: numericTimeout(kwargs.timeout_ms),
       concurrencySafe: kwargs.is_concurrency_safe === 'True' || kwargs.is_concurrency_safe === 'true'
         ? true
@@ -524,13 +573,13 @@ function collectCapabilityMethods(source: string, className: string, after: numb
   const decRe = /@method\s*\(([^)]*)\)\s*\n\s*def\s+([A-Za-z_][\w]*)\s*\(/g
   let m: RegExpExecArray | null
   while ((m = decRe.exec(body)) !== null) {
-    const { kwargs, positionals } = parseDecoratorArgs(m[1])
+    const { kwargs, positionals } = parseDecoratorArgs(group(m, 1))
     const openParen = decRe.lastIndex - 1
     const closeParen = matchParen(body, openParen + 1)
     const paramsText = closeParen < 0 ? '' : body.slice(openParen + 1, closeParen)
     methods.push({
-      name: kwargs.name ?? positionals[0] ?? m[2],
-      functionName: m[2],
+      name: kwargs.name ?? positionals[0] ?? group(m, 2),
+      functionName: group(m, 2),
       parameters: parseParameters(paramsText),
     })
   }
@@ -548,9 +597,9 @@ function collectClassFields(source: string, className: string, after: number): P
     const m = /^\s+([A-Za-z_][\w]*)\s*:\s*([^=\n]+?)(?:\s*=\s*(.+))?$/.exec(line)
     if (!m) continue
     fields.push({
-      name: m[1],
-      annotation: m[2].trim(),
-      defaultValue: m[3]?.trim(),
+      name: group(m, 1),
+      annotation: group(m, 2).trim(),
+      defaultValue: optionalGroup(m, 3)?.trim(),
     })
   }
   return fields
@@ -710,6 +759,7 @@ function generateIndexTs(parsed: ParsedModule, modulePath: string): BridgePackag
     // Service-class package form: one default-exported class owns the bridge;
     // module tools and listeners register against it in the constructor.
     const service = parsed.services[0]
+    if (service === undefined) throw new Error('codegen: services list is non-empty but its first entry is undefined')
     if (parsed.services.length > 1) {
       sections.push(`// NOTE: ${parsed.services.length - 1} additional @service classes in this module`)
       sections.push(`// are not emitted; split them into separate modules for separate packages.`)
@@ -738,13 +788,16 @@ interface ConfigField {
 }
 
 function baseConfigFields(): ConfigField[] {
+  // Schemastery semantics (vendor/schemastery): object properties are optional
+  // unless `.required()`; there is no `.optional()` method, and unions of
+  // literals replace `z.enum`.
   return [
     { tsName: 'pythonBin', tsType: 'string', zodExpr: `z.string().default('python')`, optional: true },
-    { tsName: 'module', tsType: 'string', zodExpr: `z.string()`, optional: false },
-    { tsName: 'className', tsType: 'string', zodExpr: `z.string().optional()`, optional: true },
+    { tsName: 'module', tsType: 'string', zodExpr: `z.string().required()`, optional: false },
+    { tsName: 'className', tsType: 'string', zodExpr: `z.string()`, optional: true },
     { tsName: 'pipDeps', tsType: 'string[]', zodExpr: `z.array(z.string()).default([])`, optional: true },
-    { tsName: 'cwd', tsType: 'string', zodExpr: `z.string().optional()`, optional: true },
-    { tsName: 'sandbox', tsType: `'read-only' | 'workspace-write' | 'danger-full-access'`, zodExpr: `z.enum(['read-only', 'workspace-write', 'danger-full-access']).default('workspace-write')`, optional: true },
+    { tsName: 'cwd', tsType: 'string', zodExpr: `z.string()`, optional: true },
+    { tsName: 'sandbox', tsType: `'read-only' | 'workspace-write' | 'danger-full-access'`, zodExpr: `z.union(['read-only', 'workspace-write', 'danger-full-access'] as const).default('workspace-write')`, optional: true },
     { tsName: 'graceMs', tsType: 'number', zodExpr: `z.number().default(3000)`, optional: true },
   ]
 }
@@ -757,11 +810,13 @@ function userConfigField(field: ParsedField): ConfigField {
   if (field.defaultValue !== undefined) {
     const zodDefault = pythonLiteralToTs(field.defaultValue)
     if (zodDefault === null) {
-      return { tsName, tsType, zodExpr: `${zodBase}.optional()`, optional: true, initArgName: field.name }
+      // `None` default: the field is optional (schemastery default semantics).
+      return { tsName, tsType, zodExpr: zodBase, optional: true, initArgName: field.name }
     }
     return { tsName, tsType, zodExpr: `${zodBase}.default(${zodDefault})`, optional: true, initArgName: field.name }
   }
-  return { tsName, tsType, zodExpr: zodBase, optional: false, initArgName: field.name }
+  // No dataclass default: the field is required.
+  return { tsName, tsType, zodExpr: `${zodBase}.required()`, optional: false, initArgName: field.name }
 }
 
 function zodForAnnotation(annotation: string | undefined): string {
@@ -771,10 +826,11 @@ function zodForAnnotation(annotation: string | undefined): string {
   if (a === 'str' || a === 'bytes') return 'z.string()'
   if (a?.startsWith('list[') || a?.startsWith('List[')) return 'z.array(z.any())'
   if (a?.startsWith('Optional[') || a?.includes(' | None')) {
+    // Schemastery fields are optional by default; Optional[T] needs no marker.
     const inner = a.startsWith('Optional[')
       ? a.slice('Optional['.length, a.lastIndexOf(']'))
       : a.replace(/\s*\|\s*None/g, '')
-    return `${zodForAnnotation(inner)}.optional()`
+    return zodForAnnotation(inner)
   }
   return 'z.any()'
 }
@@ -836,11 +892,13 @@ function emitServiceClass(service: ParsedService, parsed: ParsedModule, modulePa
     `      module: '${modulePath}',`,
     `      className: config.className ?? '${service.className}',`,
     `      initArgs: ${initArgsLiteral},`,
-    `      pythonBin: config.pythonBin,`,
-    `      pipDeps: config.pipDeps,`,
-    `      cwd: config.cwd,`,
-    `      sandbox: config.sandbox,`,
-    `      graceMs: config.graceMs,`,
+    // exactOptionalPropertyTypes: optional spec keys are spread only when
+    // defined (the dsh-shell resolve() pattern).
+    `      ...(config.pythonBin !== undefined ? { pythonBin: config.pythonBin } : {}),`,
+    `      ...(config.pipDeps !== undefined ? { pipDeps: config.pipDeps } : {}),`,
+    `      ...(config.cwd !== undefined ? { cwd: config.cwd } : {}),`,
+    `      ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),`,
+    `      ...(config.graceMs !== undefined ? { graceMs: config.graceMs } : {}),`,
     `    })`,
   ]
   if (toolRegistrations) {
@@ -896,7 +954,9 @@ function emitToolRegistration(tool: ParsedTool, bridgeExpr: string): string {
     lines.push(`  },`)
   } else {
     lines.push(`  output: {`)
-    lines.push(`    schema: { type: 'object', properties: {} },`)
+    // Codegen-authored fallback: dsh-tools' JSON Schema compiler requires an
+    // explicit additionalProperties on every object schema.
+    lines.push(`    schema: { type: 'object', additionalProperties: false, properties: {} },`)
     lines.push(`    render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],`)
     lines.push(`  },`)
   }
@@ -978,11 +1038,11 @@ function emitFunctionPlugin(parsed: ParsedModule, modulePath: string): string {
     `  // (tools are stateless model-facing entry points, spec §6.1).`,
     `  const bridge = ctx.pythonBridge.spawn({`,
     `    module: '${modulePath}',`,
-    `    pythonBin: config.pythonBin,`,
-    `    pipDeps: config.pipDeps,`,
-    `    cwd: config.cwd,`,
-    `    sandbox: config.sandbox,`,
-    `    graceMs: config.graceMs,`,
+    `    ...(config.pythonBin !== undefined ? { pythonBin: config.pythonBin } : {}),`,
+    `    ...(config.pipDeps !== undefined ? { pipDeps: config.pipDeps } : {}),`,
+    `    ...(config.cwd !== undefined ? { cwd: config.cwd } : {}),`,
+    `    ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),`,
+    `    ...(config.graceMs !== undefined ? { graceMs: config.graceMs } : {}),`,
     `  })`,
   ]
   if (toolRegistrations) out.push(``, indent(toolRegistrations, 2))
@@ -1021,15 +1081,21 @@ export function runCli(args: string[]): number {
   let outDir: string | undefined
   let packageName = '@my-org/python-bridge'
   let module = 'module'
+  /** Read the value after a flag, failing loud when the flag is last. */
+  const flagValue = (index: number): string => {
+    const value = args[index]
+    if (value === undefined) throw new Error('dsh-bridge-codegen: missing value after flag')
+    return value
+  }
   for (let i = 0; i < args.length; i++) {
     const a = args[i]
     if (a === '--out') {
-      outDir = args[++i]
+      outDir = flagValue(++i)
     } else if (a === '--name') {
-      packageName = args[++i]
+      packageName = flagValue(++i)
     } else if (a === '--module') {
-      module = args[++i]
-    } else {
+      module = flagValue(++i)
+    } else if (a !== undefined) {
       positional.push(a)
     }
   }
