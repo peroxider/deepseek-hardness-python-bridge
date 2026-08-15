@@ -567,6 +567,13 @@ table.table-ref {
   overflow-x: auto;
 }
 .diagram-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+.diagram-wrap .node-rect { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+.diagram-wrap .cluster-rect { fill: #0f0f11; stroke: var(--border); stroke-width: 1; }
+.diagram-wrap .emphasis { stroke: url(#dsh-gradient); stroke-width: 1.5; }
+.diagram-wrap .flowchart-link { stroke: var(--muted); fill: none; stroke-width: 1; }
+.diagram-wrap foreignObject > div { color: var(--text); font-family: var(--font-mono); }
+.diagram-wrap foreignObject .sub { font-size: 12px; color: var(--muted); display: block; vertical-align: baseline; line-height: 1.4; }
+.diagram-wrap foreignObject .edge-label { display: inline-block; color: var(--text); font-size: 13px; line-height: 1.4; }
 
 /* ---------- Two-column (step + side panel) ---------- */
 .cols-2 {
