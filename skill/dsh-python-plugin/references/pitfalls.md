@@ -47,6 +47,12 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 **Cause**: the host library requires claim-before-start.
 **Fix**: see `references/contracts.md` — auto-claim in the wrapper.
 
+## Schema error reported but the mutation succeeded
+
+**Symptom**: a create/update tool returns a schema validation error listing undeclared fields, yet the task exists / state changed anyway.
+**Cause**: the tool's return carries host envelope fields (`commandId`, `revision`, …) the `output_schema` never declared, and `additionalProperties: false` rejects them. The mutation commits before the ToolRuntime validates the return.
+**Fix**: split payload shapes — model-facing tools return only domain fields + `decision` + `reason` (see `contracts.md` "Model-facing tool returns"); verify by compiling the declared schema and validating a real return value with dsh-tools' `valueSchemaSpecToJsonSchema` + `validateJsonSchemaValue`.
+
 ## Python child exits immediately (`worker-exit`, `-32011`)
 
 **Cause**: the module fails to import inside the child — the child cwd lacks the packages.

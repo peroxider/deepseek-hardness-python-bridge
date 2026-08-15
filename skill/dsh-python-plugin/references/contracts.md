@@ -46,6 +46,20 @@ Everything returned crosses the wire as JSON. Dataclasses, datetime, Path, enums
 - Module-level `@tool` functions share the service's child when both are mounted; without a service instance they must build their own context (env-var fallback).
 - The child's cwd is the plugin directory; Python imports resolve from there. Keep the plugin root self-contained.
 
+## Model-facing tool returns vs. service returns
+
+Keep two payload shapes deliberately:
+
+- **`@provide_method` (service API, programmatic callers)**: may carry the full host envelope (`decision`, `reason`, `commandId`, `revision`) — callers doing CAS or correlation need it.
+- **`@tool` (model-facing)**: the ToolRuntime enforces `output.schema` against every returned value, so the return must contain **only** what the schema declares. RPC metadata stays off this surface. Keep `decision` (committed/denied) and `reason` (normalized to a string, `""` when committed) — the model needs both to recover from denials; drop `commandId`/`revision` (visible through the service or board views if ever needed).
+
+```python
+def _tool_payload(result):
+    return {"decision": result.decision, "reason": result.reason or ""}
+```
+
+A schema error raised while the underlying mutation succeeded is the signature of an envelope/schema mismatch — the mutation commits first, then the runtime validates the return value.
+
 ## Configuration contract
 
 - Service config flows: `cordis.yml` camelCase keys → generated Config → `initArgs` snake_case kwargs → dataclass fields.
