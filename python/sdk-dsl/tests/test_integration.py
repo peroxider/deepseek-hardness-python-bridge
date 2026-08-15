@@ -107,6 +107,22 @@ def test_initialize_handshake(bridge: _BridgeProcess) -> None:
     assert "echo" in manifest["methods"]
     assert "shout" in manifest["methods"]
     assert any(s["event"] == "session/event" for s in manifest["listeners"])
+    # Enriched manifest fields (M1.1): schema + annotation metadata.
+    assert manifest["services"][0]["name"] == "echo"
+    assert manifest["services"][0]["initFields"] == [
+        {"name": "greeting", "annotation": "str", "default": "hello"}
+    ]
+    echo = next(m for m in manifest["provideMethods"] if m["name"] == "echo")
+    assert echo["parameters"] == {"text": "str"}
+    assert echo["return"] == "str"
+    boom = next(m for m in manifest["provideMethods"] if m["name"] == "boom")
+    assert boom["parameters"] == {}
+    assert boom["return"] == "None"
+    shout = next(t for t in manifest["tools"] if t["name"] == "shout")
+    assert shout["parameters"] == {"text": {"type": "string"}}
+    assert shout["outputSchema"] is None
+    audit = next(l for l in manifest["listeners"] if l["event"] == "session/event")
+    assert audit["function"] == "audit"
 
 
 def test_call_provide_method(bridge: _BridgeProcess) -> None:

@@ -34,6 +34,17 @@ python -u -m dsh_bridge.runtime <module.path> [--class <ClassName>] [--function 
 
 The runtime walks the bridge registry and dispatches JSON-RPC requests to the matching Python callables. Errors map to the JSON-RPC error vocabulary in `dsh_bridge._errors` (`-32001`/`timeout`, `-32003`/`permission`, etc.).
 
+### Runtime manifest
+
+The `initialize` handshake returns `serverInfo` plus a `manifest` carrying every dynamically registered surface with the metadata a host needs to build the plugin without codegen:
+
+- `tools[]` — `name`, `description`, `parameters` (JSON Schema), `outputSchema`
+- `provideMethods[]` — `name`, `timeoutMs`, `concurrencySafe`, `parameters` (PEP 484 annotation strings), `return`
+- `services[]` — `name`, `class`, `initFields` (dataclass field name/annotation/default)
+- `listeners[]` — `event`, `mode`, `prepend`, `global`, `function`
+
+The full schema is documented in [`skill/dsh-python-plugin/references/manifest.md`](../../skill/dsh-python-plugin/references/manifest.md) in the bridge repository.
+
 ## Test
 
 ```sh

@@ -43,7 +43,7 @@ DeepSeek Harness's plugin surface is TypeScript-only. This bridge is the path th
 
 The premise is proven by four verification tiers, all reproducible offline via `node scripts/verify.mjs`:
 
-1. **Python suite** — 43 pytest tests covering decorators, PEP 484 type inference, the JSON-RPC runtime, and real-subprocess integration over stdio.
+1. **Python suite** — 46 pytest tests covering decorators, PEP 484 type inference, the JSON-RPC runtime, real-subprocess integration over stdio, and the enriched `initialize` manifest (tool schemas, method annotations, service init fields, listener function names).
 2. **Offline TypeScript E2E** — plain-Node assertions (no package install) covering codegen emission (55+ assertions), runtime lifecycle (worker-exit, reconnect, teardown ladder, env scrub), a real `python3` child round-trip, and a generated package mounted on a stub Cordis context.
 3. **REAL-composition** — a test `cordis.yml` booted through the genuine vendored Cordis Loader (`vendor/loader` + `vendor/include`), with real schemastery applying the generated `static Config`, the real `ToolRuntime` holding the registered tool, a real `ctx.emit('session/event')` reaching the Python listener, and `ctx.fiber.dispose()` tearing the child down through the effect disposers.
 4. **Strict typecheck** — `tsc -b` (typescript 6.0.3, monorepo `tsconfig.base.json` flags: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) over the two bridge packages and a generated example package inside the monorepo's project-reference graph: zero errors.
@@ -191,7 +191,7 @@ The steps are decoupled — each consumes artifacts the previous one left on dis
 # typecheck tiers when a monorepo checkout and tsc are available):
 node scripts/verify.mjs
 
-# Python only: 43 tests (decorators, type inference, runtime, real-subprocess integration)
+# Python only: 46 tests (decorators, type inference, runtime, real-subprocess integration)
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # Example smoke test (no bridge required)

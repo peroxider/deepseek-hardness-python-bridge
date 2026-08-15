@@ -34,6 +34,17 @@ python -u -m dsh_bridge.runtime <module.path> [--class <ClassName>] [--function 
 
 运行时扫描 bridge registry 并将 JSON-RPC 请求分派到匹配的 Python 可调用对象。异常按 `dsh_bridge._errors` 中的 JSON-RPC 错误词典映射（`-32001`/`timeout`、`-32003`/`permission` 等）。
 
+### 运行时 manifest
+
+`initialize` 握手返回 `serverInfo` 外加一个 `manifest`，携带所有动态注册的表面及其元数据，宿主无需 codegen 即可据此构建插件：
+
+- `tools[]` —— `name`、`description`、`parameters`（JSON Schema）、`outputSchema`
+- `provideMethods[]` —— `name`、`timeoutMs`、`concurrencySafe`、`parameters`（PEP 484 注解字符串）、`return`
+- `services[]` —— `name`、`class`、`initFields`（dataclass 字段名/注解/默认值）
+- `listeners[]` —— `event`、`mode`、`prepend`、`global`、`function`
+
+完整 schema 见 bridge 仓库的 [`skill/dsh-python-plugin/references/manifest.md`](../../skill/dsh-python-plugin/references/manifest.md)。
+
 ## 测试
 
 ```sh

@@ -63,7 +63,7 @@ python/sdk-dsl/                          dsh-bridge PyPI 包：装饰器 + 运�
   src/dsh_bridge/runtime.py                python -u -m dsh_bridge.runtime <module> 入口
   src/dsh_bridge/_type_inference.py        PEP 484 → JSON Schema 推断
   src/dsh_bridge/_errors.py                异常 → JSON-RPC code/kind 词典
-  tests/                                   pytest：单元 + 真实子进程集成（43 个测试）
+  tests/                                   pytest：单元 + 真实子进程集成（46 个测试）
 packages/bridge/
   python-bridge-runtime/                 @deepseek-ai/dsh-python-bridge-runtime
     src/index.ts                           PythonBridgeService（ctx.pythonBridge）+ PythonBridge 客户端
@@ -190,7 +190,7 @@ scripts/install-python-plugin.py \
 # 当 monorepo 检出与 tsc 可用时还会运行 REAL-composition 与严格类型检查层）：
 node scripts/verify.mjs
 
-# 仅 Python：43 个测试（装饰器、类型推断、运行时、真实子进程集成）
+# 仅 Python：46 个测试（装饰器、类型推断、运行时、真实子进程集成）
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # 示例 smoke test（无需 bridge）

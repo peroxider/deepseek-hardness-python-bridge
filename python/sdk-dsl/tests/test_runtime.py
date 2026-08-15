@@ -3,6 +3,7 @@
 import io
 import json
 import threading
+from dataclasses import dataclass
 
 import pytest
 
@@ -269,6 +270,92 @@ def test_server_initialize_returns_manifest():
     assert "embed" in result["manifest"]["methods"]
     assert "resize" in result["manifest"]["methods"]
     assert any(s["event"] == "session/event" for s in result["manifest"]["listeners"])
+
+
+def test_server_initialize_manifest_carries_schema_and_annotations():
+    @service(name="cfg")
+    @dataclass
+    class ConfiguredProvider:
+        greeting: str = "hello"
+        retries: int = 3
+
+        @provide_method(timeout_ms=10)
+        def embed(self, texts: list[str], top_k: int = 5) -> list[list[float]]:
+            return [[0.0] * top_k for _ in texts]
+
+    @tool(
+        name="resize",
+        description="resize an image",
+        parameters={"width": {"type": "integer"}, "height": {"type": "integer"}},
+        output_schema={"type": "object", "additionalProperties": False, "properties": {}},
+    )
+    def resize(width: int, height: int) -> dict:
+        return {"width": width, "height": height}
+
+    @on("session/event", mode="emit")
+    def listener(event: str, payload: dict) -> None:
+        pass
+
+    registry = get_registry()
+    router = _Router(registry, ConfiguredProvider(), [])
+    router.build()
+    transport = _StdioTransport(stdin=io.StringIO(), stdout=io.StringIO())
+    dispatcher = _Dispatcher(router, transport)
+    server = _Server(router, transport, dispatcher, registry)
+
+    sink = io.StringIO()
+    transport._stdout = sink  # redirect for assertion
+
+    server._handle_frame(json.loads(_build_request("initialize", {}, request_id="i1")))
+
+    frames = [json.loads(line) for line in sink.getvalue().split("\n") if line]
+    manifest = frames[0]["result"]["manifest"]
+
+    assert manifest["services"][0]["name"] == "cfg"
+    assert manifest["services"][0]["initFields"] == [
+        {"name": "greeting", "annotation": "str", "default": "hello"},
+        {"name": "retries", "annotation": "int", "default": 3},
+    ]
+
+    embed = next(m for m in manifest["provideMethods"] if m["name"] == "embed")
+    assert embed["parameters"] == {"texts": "list[str]", "top_k": "int"}
+    assert embed["return"] == "list[list[float]]"
+
+    resize_tool = next(t for t in manifest["tools"] if t["name"] == "resize")
+    assert resize_tool["parameters"] == {
+        "width": {"type": "integer"},
+        "height": {"type": "integer"},
+    }
+    assert resize_tool["outputSchema"] == {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {},
+    }
+
+    listener_entry = next(l for l in manifest["listeners"] if l["event"] == "session/event")
+    assert listener_entry["function"] == "listener"
+
+
+def test_server_initialize_non_dataclass_service_has_empty_init_fields():
+    @service(name="plain")
+    class PlainProvider:
+        @provide_method()
+        def ping(self) -> str:
+            return "pong"
+
+    registry = get_registry()
+    router = _Router(registry, PlainProvider(), [])
+    router.build()
+    transport = _StdioTransport(stdin=io.StringIO(), stdout=io.StringIO())
+    dispatcher = _Dispatcher(router, transport)
+    server = _Server(router, transport, dispatcher, registry)
+
+    sink = io.StringIO()
+    transport._stdout = sink
+    server._handle_frame(json.loads(_build_request("initialize", {}, request_id="i1")))
+
+    frames = [json.loads(line) for line in sink.getvalue().split("\n") if line]
+    assert frames[0]["result"]["manifest"]["services"][0]["initFields"] == []
 
 
 def test_server_handles_event_notification_for_registered_listener():

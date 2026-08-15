@@ -37,7 +37,8 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+import dataclasses
+from dataclasses import dataclass, fields, is_dataclass
 from typing import Any, Callable, Optional
 
 from ._bridge_metadata import (
@@ -349,6 +350,109 @@ class _Dispatcher:
 
 
 # ---------------------------------------------------------------------------
+# Manifest enrichment — annotation / schema fields for dynamic registration.
+# ---------------------------------------------------------------------------
+
+
+def _annotation_string(annotation: Any) -> Optional[str]:
+    """Render one PEP 484 annotation as its manifest string form.
+
+    Under `from __future__ import annotations` the value is already a string;
+    otherwise it is a type object (or typing alias) whose name or `repr` is
+    the conventional text form (e.g. `list[str]`). A literal `None` annotation
+    (the `-> None` return form without stringized annotations) renders as
+    `"None"`; only the absent case is represented by a `None` return.
+    """
+    if isinstance(annotation, str):
+        return annotation
+    if annotation is None or annotation is type(None):
+        return "None"
+    # Generic aliases (`list[str]`) and typing generics (`typing.Optional[dict]`)
+    # expose their origin's name through `__name__`; only the repr carries the
+    # type arguments, so prefer it when the annotation is parameterized.
+    if getattr(annotation, "__origin__", None) is not None and getattr(annotation, "__args__", None):
+        try:
+            return repr(annotation)
+        except Exception:  # noqa: BLE001
+            return None
+    try:
+        name = getattr(annotation, "__name__", None)
+    except Exception:  # noqa: BLE001
+        name = None
+    if isinstance(name, str):
+        return name
+    try:
+        return repr(annotation)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _provide_method_annotations(func: Callable[..., Any]) -> tuple[dict[str, str], Optional[str]]:
+    """Return (parameter name → annotation string, return annotation string).
+
+    `self`/`cls` and the `return` key are excluded from the parameter map.
+    Annotations that cannot render are dropped rather than emitted as nulls.
+    """
+    annotations = getattr(func, "__annotations__", {}) or {}
+    parameters: dict[str, str] = {}
+    for name, annotation in annotations.items():
+        if name in ("return", "self", "cls"):
+            continue
+        rendered = _annotation_string(annotation)
+        if rendered is not None:
+            parameters[name] = rendered
+    return_annotation: Optional[str] = None
+    if "return" in annotations:
+        # Distinguish an absent `return` annotation (None) from an explicit
+        # `-> None` (the literal None object, which renders as "None").
+        return_annotation = _annotation_string(annotations["return"])
+    return parameters, return_annotation
+
+
+def _json_safe(value: Any) -> bool:
+    try:
+        json.dumps(value)
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def _service_init_fields(cls: type) -> list[dict[str, Any]]:
+    """Project a dataclass onto manifest `initFields` entries.
+
+    Each entry carries the field name and annotation string; a JSON-safe plain
+    default or the default-factory name is included when present (initArgs
+    validation and Config documentation consume these). Non-dataclass classes
+    report no init fields — their constructor is opaque to the bridge.
+    """
+    if not is_dataclass(cls):
+        return []
+    entries: list[dict[str, Any]] = []
+    for f in fields(cls):
+        if f.name.startswith("_"):
+            continue
+        entry: dict[str, Any] = {"name": f.name, "annotation": _annotation_string(f.type) or "unknown"}
+        if f.default is not dataclasses.MISSING and _json_safe(f.default):
+            entry["default"] = f.default
+        elif f.default_factory is not dataclasses.MISSING:
+            entry["defaultFactory"] = getattr(f.default_factory, "__name__", "factory")
+        entries.append(entry)
+    return entries
+
+
+def _provide_method_manifest(metadata: ProvideMethodMetadata) -> dict[str, Any]:
+    """One `provideMethods[]` manifest entry with annotation metadata."""
+    parameters, return_annotation = _provide_method_annotations(metadata.func)
+    return {
+        "name": metadata.name,
+        "timeoutMs": metadata.timeout_ms,
+        "concurrencySafe": metadata.is_concurrency_safe,
+        "parameters": parameters,
+        "return": return_annotation,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Server — orchestrates the transport, router, dispatcher, and event routing.
 # ---------------------------------------------------------------------------
 
@@ -467,19 +571,27 @@ class _Server:
         server_info = {"name": SERVER_INFO_NAME, "version": _bridge_version()}
         manifest = {
             "services": [
-                {"name": m.name, "class": m.cls.__name__}
+                {"name": m.name, "class": m.cls.__name__, "initFields": _service_init_fields(m.cls)}
                 for m in self._registry.services.values()
             ],
-            "provideMethods": [
-                {"name": m.name, "timeoutMs": m.timeout_ms, "concurrencySafe": m.is_concurrency_safe}
-                for m in self._registry.provide_methods
-            ],
+            "provideMethods": [_provide_method_manifest(m) for m in self._registry.provide_methods],
             "tools": [
-                {"name": m.name, "description": m.description}
+                {
+                    "name": m.name,
+                    "description": m.description,
+                    "parameters": m.parameters,
+                    "outputSchema": m.output_schema,
+                }
                 for m in self._registry.tools
             ],
             "listeners": [
-                {"event": m.event, "mode": m.mode, "prepend": m.prepend, "global": m.global_}
+                {
+                    "event": m.event,
+                    "mode": m.mode,
+                    "prepend": m.prepend,
+                    "global": m.global_,
+                    "function": m.func.__name__,
+                }
                 for m in self._registry.listeners
             ],
             "capabilities": [
