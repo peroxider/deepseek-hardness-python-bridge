@@ -17,6 +17,20 @@ export class Context {
     return this._services[name]
   }
 
+  /**
+   * Mirror cordis' child-context: a new context that keeps the parent's
+   * services (and own properties) visible but owns a fresh disposer list, so
+   * disposing the child does not dispose the parent's services.
+   */
+  fork() {
+    const child = new Context(this._services)
+    for (const key of Object.keys(this)) {
+      if (key === '_services' || key === '_disposers') continue
+      child[key] = this[key]
+    }
+    return child
+  }
+
   on() {
     return () => {}
   }

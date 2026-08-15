@@ -221,13 +221,18 @@ def audit(event: str, payload: dict, next_fn) -> None:
   })
 
   it('registers module tools and listeners in the constructor', () => {
-    expect(index.contents).toContain('ctx.tools.register(defineTool({')
+    expect(index.contents).toContain('ctx.effect(() => ctx.tools.register(defineTool({')
     expect(index.contents).toContain(`name: "resize_image"`)
     expect(index.contents).toContain('output: {')
     expect(index.contents).toContain('render:')
     expect(index.contents).toContain(`ctx.on("session/event"`)
     // No standalone apply() in the service-class form.
     expect(index.contents).not.toContain('export function apply')
+  })
+
+  it('ties the child teardown to the plugin fiber (hot-unload reversibility)', () => {
+    expect(index.contents).toContain('ctx.effect(() => () => this.bridge.shutdown())')
+    expect(index.contents).toContain('ctx.effect(() => ctx.tools.register(defineTool({')
   })
 })
 
@@ -263,5 +268,10 @@ def audit(event: str, payload: dict) -> None:
     expect(index.contents).toContain('const bridge = ctx.pythonBridge.spawn({')
     expect(index.contents).toContain(`module: 'example.tools'`)
     expect(index.contents).toContain('bridge.call("shout"')
+  })
+
+  it('registers the shared bridge teardown as a fiber effect', () => {
+    expect(index.contents).toContain('ctx.effect(() => () => bridge.shutdown())')
+    expect(index.contents).toContain('ctx.effect(() => ctx.tools.register(defineTool({')
   })
 })

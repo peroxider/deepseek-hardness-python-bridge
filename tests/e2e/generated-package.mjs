@@ -15,11 +15,11 @@ import { generateBridgePackage } from '../../packages/bridge/python-bridge-codeg
 import { PythonBridgeService } from '../../packages/bridge/python-bridge-runtime/src/index.ts'
 import { Context } from '@deepseek-ai/cordis'
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { delimiter, dirname, join } from 'node:path'
+import { pathToFileURL, fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
-process.env.PYTHONPATH = 'examples/python-bridge-ml:python/sdk-dsl/src'
+process.env.PYTHONPATH = ['examples/python-bridge-ml', 'python/sdk-dsl/src'].join(delimiter)
 
 let failures = 0
 function assert(cond, message) {
@@ -50,12 +50,24 @@ for (const f of artifacts.files) {
 console.log('ok: package generated into .gen/python-bridge-ml')
 
 // 2. Load the generated package and mount its Service on a stub context.
-const generated = await import(join(outDir, 'src/index.ts'))
+// The pythonBridge service lives on the root context; the generated plugin is
+// mounted on a child (forked) context so we can prove its fiber effects tear
+// down the child and unregister the tool WITHOUT disposing the service.
+const generated = await import(pathToFileURL(join(outDir, 'src/index.ts')).href)
 const tools = []
 const eventHandlers = []
-const ctx = new Context({})
-ctx.pythonBridge = new PythonBridgeService(ctx)
-ctx.tools = { register: (def) => tools.push(def) }
+const parent = new Context({})
+parent.pythonBridge = new PythonBridgeService(parent)
+const ctx = parent.fork()
+ctx.tools = {
+  register: (def) => {
+    tools.push(def)
+    return () => {
+      const i = tools.indexOf(def)
+      if (i >= 0) tools.splice(i, 1)
+    }
+  },
+}
 ctx.on = (event, handler, options) => { eventHandlers.push({ event, handler, options }); return () => {} }
 
 const config = {
@@ -107,8 +119,14 @@ sessionHandler.handler({ type: 'tool/call', data: { name: 'resize_image' } })
 await new Promise(r => setTimeout(r, 400))
 assert(logs.some(l => l.message.includes('audit')), 'listener payload reached Python (audit log)')
 
-// 6. Teardown.
-await ctx.pythonBridge.dispose()
+// 6. Teardown: disposing ONLY the plugin's fiber (not the pythonBridge
+// service) must run the generated fiber effects — shutting down the child
+// and unregistering the tool. This is the hot-unload reversibility contract.
+await ctx.dispose()
+assert(service.bridge.ready === false, 'child torn down by plugin-fiber effects (service still alive)')
+assert(tools.length === 0, 'tool unregistered by plugin-fiber effects')
+assert(parent.pythonBridge.children.size === 0, 'service children set cleaned by plugin disposal')
+await parent.pythonBridge.dispose()
 console.log('ok: bridge disposed')
 
 if (failures > 0) {

@@ -23,7 +23,8 @@ SDK_SRC = REPO_ROOT / "src"
 
 def _runtime_env() -> dict[str, str]:
     env = os.environ.copy()
-    env["PYTHONPATH"] = f"{FIXTURES}:{SDK_SRC}"
+    # os.pathsep keeps PYTHONPATH platform-correct (`:` on POSIX, `;` on Windows).
+    env["PYTHONPATH"] = os.pathsep.join(str(p) for p in (FIXTURES, SDK_SRC))
     env["PYTHONUNBUFFERED"] = "1"
     return env
 

@@ -8,6 +8,7 @@
  *   node --experimental-strip-types tests/e2e/runtime-lifecycle.mjs
  */
 import { PassThrough } from 'node:stream'
+import { resolve } from 'node:path'
 import {
   JsonRpcLineTransport,
   JsonRpcResponseError,
@@ -204,7 +205,10 @@ const ctx = new Context({})
   )
   assert(argvSeen[0]?.[0] === 'bwrap', `confined argv used (got ${argvSeen[0]?.[0]})`)
   assert(confinedCalls[0]?.policy?.mode === 'workspace-write', 'policy mode forwarded')
-  assert(confinedCalls[0]?.policy?.workspaceRoot === '/tmp/ws', 'workspaceRoot resolved from cwd')
+  // resolve() keeps the expectation platform-correct: on POSIX `/tmp/ws` is
+  // unchanged, on Windows it becomes `C:\tmp\ws` exactly as the runtime's
+  // `resolve(cwd)` produces.
+  assert(confinedCalls[0]?.policy?.workspaceRoot === resolve('/tmp/ws'), 'workspaceRoot resolved from cwd')
   await service.dispose()
 
   const service2 = new PythonBridgeService(ctxWithSandbox)

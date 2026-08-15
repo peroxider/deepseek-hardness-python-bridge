@@ -112,7 +112,8 @@ assert(index.contents.includes('embed(texts: string[]): Promise<number[][]>'), '
 assert(index.contents.includes('classify(image_b64: string, top_k?: number): Promise<Record<string, unknown>[]>'),
   'typed classify signature')
 
-assert(index.contents.includes('ctx.tools.register(defineTool({'), 'tool registration emitted')
+assert(index.contents.includes('ctx.effect(() => ctx.tools.register(defineTool({'), 'tool registration emitted as a fiber effect')
+assert(index.contents.includes('ctx.effect(() => () => this.bridge.shutdown())'), 'child teardown bound to the plugin fiber')
 assert(index.contents.includes('output: {'), 'defineTool output shape emitted')
 assert(index.contents.includes('render:'), 'defineTool render emitted')
 assert(index.contents.includes(`ctx.on("session/event"`), 'listener registration emitted')
@@ -165,6 +166,7 @@ assert(fpIndex.contents.includes('export const Config'), 'function-plugin Config
 assert(fpIndex.contents.includes('export function apply(ctx: Context, config: BridgeToolsConfig)'), 'apply() emitted')
 assert(!fpIndex.contents.includes('export default'), 'no default export in function-plugin form')
 assert(fpIndex.contents.includes('const bridge = ctx.pythonBridge.spawn({'), 'shared bridge in apply()')
+assert(fpIndex.contents.includes('ctx.effect(() => () => bridge.shutdown())'), 'function-plugin teardown bound to the fiber')
 
 if (failures > 0) {
   console.error(`${failures} codegen check(s) failed`)

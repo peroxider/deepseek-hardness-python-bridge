@@ -72,12 +72,51 @@ export interface PythonBridgeSpawnSpec {
   maxThreads?: number
 }
 
+/** One dataclass constructor field surfaced for Config documentation and initArgs validation. */
+export interface PythonBridgeInitField {
+  /** Field name (snake_case, Python side). */
+  name: string
+  /** PEP 484 annotation rendered as text (e.g. `list[str]`); `unknown` when not renderable. */
+  annotation: string
+  /** JSON-safe plain default value when the field has one. */
+  default?: unknown
+  /** Default-factory function name when the field uses `field(default_factory=...)`. */
+  defaultFactory?: string
+}
+
 /** Manifest returned by `python -u -m dsh_bridge.runtime` during `initialize`. */
 export interface PythonBridgeManifest {
-  services: Array<{ name: string; class: string }>
-  provideMethods: Array<{ name: string; timeoutMs: number | null; concurrencySafe: boolean | null }>
-  tools: Array<{ name: string; description: string }>
-  listeners: Array<{ event: string; mode: string; prepend: boolean; global: boolean }>
+  services: Array<{
+    name: string
+    class: string
+    /** Dataclass constructor fields; empty for non-dataclass classes. */
+    initFields: PythonBridgeInitField[]
+  }>
+  provideMethods: Array<{
+    name: string
+    timeoutMs: number | null
+    concurrencySafe: boolean | null
+    /** Parameter name → PEP 484 annotation string (empty when none render). */
+    parameters: Record<string, string>
+    /** Return annotation string; null when the method has no `->` annotation. */
+    return: string | null
+  }>
+  tools: Array<{
+    name: string
+    description: string
+    /** Per-property parameter map (dsh-tools `ParameterSchemaSpec` form). */
+    parameters: Record<string, unknown>
+    /** Raw JSON Schema value projection; null when the tool declares none. */
+    outputSchema: Record<string, unknown> | null
+  }>
+  listeners: Array<{
+    event: string
+    mode: string
+    prepend: boolean
+    global: boolean
+    /** Python function name backing the listener (for diagnostics). */
+    function: string
+  }>
   capabilities: Array<{ seam: string; backend: string; class: string }>
   capabilityMethods: string[]
   promptSections: Array<{ order: number; text: string; function: string }>

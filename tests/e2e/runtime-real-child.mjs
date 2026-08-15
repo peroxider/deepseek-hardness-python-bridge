@@ -15,11 +15,11 @@
  */
 import { PythonBridgeService, PythonBridgeError } from '../../packages/bridge/python-bridge-runtime/src/index.ts'
 import { Context } from '@deepseek-ai/cordis'
-import { dirname, join } from 'node:path'
+import { delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
-process.env.PYTHONPATH = 'examples/python-bridge-ml:python/sdk-dsl/src'
+process.env.PYTHONPATH = ['examples/python-bridge-ml', 'python/sdk-dsl/src'].join(delimiter)
 
 function assert(cond, message) {
   if (!cond) {

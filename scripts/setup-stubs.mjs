@@ -17,7 +17,7 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { pathToFileURL, fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -38,9 +38,10 @@ for (const [name, file] of STUBS) {
   if (file === null) {
     // Self-link so generated bridge packages can import the runtime source.
     const runtimeSrc = join(root, 'packages/bridge/python-bridge-runtime/src/index.ts')
-    target = `export * from '${runtimeSrc}'\nexport { default } from '${runtimeSrc}'\n`
+    const href = pathToFileURL(runtimeSrc).href
+    target = `export * from '${href}'\nexport { default } from '${href}'\n`
   } else {
-    const stub = join(root, 'tests/stubs', file)
+    const stub = pathToFileURL(join(root, 'tests/stubs', file)).href
     target = `export * from '${stub}'\n`
     if (file === 'schemastery.mjs') target += `export { default } from '${stub}'\n`
   }

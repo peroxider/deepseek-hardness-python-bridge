@@ -920,6 +920,10 @@ function emitServiceClass(service: ParsedService, parsed: ParsedModule, modulePa
     `      ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),`,
     `      ...(config.graceMs !== undefined ? { graceMs: config.graceMs } : {}),`,
     `    })`,
+    `    // Bind the child's teardown to THIS plugin's fiber: hot-unloading the`,
+    `    // plugin must release the Python child instead of waiting for the`,
+    `    // pythonBridge service-level teardown.`,
+    `    ctx.effect(() => () => this.bridge.shutdown())`,
   ]
   if (toolRegistrations) {
     out.push(``, `    // Model-facing tools declared in the same module share this bridge's`, `    // Python child (one process per Service Provider instance, spec §6.1).`)
@@ -965,7 +969,7 @@ function emitToolRegistration(tool: ParsedTool, bridgeExpr: string): string {
   const returnType = (tool.returnAnnotation ? pythonTypeToTs(tool.returnAnnotation) : 'unknown')
     .replaceAll('unknown', 'JsonValue')
   const lines = [
-    `ctx.tools.register(defineTool({`,
+    `ctx.effect(() => ctx.tools.register(defineTool({`,
     `  name: ${JSON.stringify(tool.name)},`,
     `  description: ${JSON.stringify(tool.description)},`,
     `  parameters: ${indent(parametersJson, 2).trimStart()},`,
@@ -990,7 +994,7 @@ function emitToolRegistration(tool: ParsedTool, bridgeExpr: string): string {
   lines.push(`    // The wire boundary is untyped JSON; output.schema validates the value.`)
   lines.push(`    return ${bridgeExpr}.call(${JSON.stringify(tool.name)}, args as Record<string, unknown>) as Promise<${returnType}>`)
   lines.push(`  },`)
-  lines.push(`}))`)
+  lines.push(`})))`)
   return lines.join('\n')
 }
 
@@ -1067,6 +1071,8 @@ function emitFunctionPlugin(parsed: ParsedModule, modulePath: string): string {
     `    ...(config.sandbox !== undefined ? { sandbox: config.sandbox } : {}),`,
     `    ...(config.graceMs !== undefined ? { graceMs: config.graceMs } : {}),`,
     `  })`,
+    `  // Bind the child's teardown to this plugin's fiber (hot unload releases it).`,
+    `  ctx.effect(() => () => bridge.shutdown())`,
   ]
   if (toolRegistrations) out.push(``, indent(toolRegistrations, 2))
   if (listenerRegistrations) out.push(``, indent(listenerRegistrations, 2))
