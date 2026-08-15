@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Community — dsh-bridge</title>
+  <meta name="description" content="Docs, skill, cookbook, repo links, and how to contribute — for both human engineers and AI coding agents.">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">
+      <span class="nav-brand-mark"></span>
+      dsh-bridge
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="getting-started.html">Get started</a></li>
+      <li><a href="decorators.html">Decorators</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="verification.html">Verification</a></li>
+      <li><a href="roadmap.html">Roadmap</a></li>
+      <li><a href="community.html" class="active">Community</a></li>
+    </ul>
+    <a class="nav-repo" href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub →</a>
+  </div>
+</nav>
+
+<main>
+
+  <header class="page-header container">
+    <div class="eyebrow">Community</div>
+    <h1>For humans and for agents.</h1>
+    <p>
+      The conversion workflow is documented twice — once for a person at a
+      terminal, and once for an AI coding agent that drives it from inside.
+      Pick the path that fits.
+    </p>
+    <p class="muted" style="margin-top: 8px;">
+      <small>
+        <span class="badge-repo">in main repo</span>
+        The standalone site bundles the marketing pages only. The full
+        guides, cookbook, and skill bundle live in the
+        <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/tree/main/docs">main repo</a>
+        — every link below points to that GitHub view.
+      </small>
+    </p>
+  </header>
+
+  <section class="container section-sm">
+
+    <div class="card-grid">
+
+      <!-- ========== For humans ========== -->
+      <div class="card">
+        <h3>For human engineers</h3>
+        <p>
+          The operator-facing guide. Written for someone running the
+          commands themselves.
+        </p>
+        <ul style="margin-top: 12px;">
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Human Engineer Guide (EN)</a><span class="badge-repo">in main repo</span>
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">人类工程师指南 (ZH)</a><span class="badge-repo">in main repo</span>
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/cookbook/adding-a-python-bridge.md">Cookbook (EN)</a><span class="badge-repo">in main repo</span>
+            — step-by-step from zero to a loaded plugin.
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/cookbook/adding-a-python-bridge.zh.md">Cookbook (ZH)</a><span class="badge-repo">in main repo</span>
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a><span class="badge-repo">in main repo</span>
+            — canonical reference, including the verification tiers.
+          </li>
+        </ul>
+      </div>
+
+      <!-- ========== For AI agents ========== -->
+      <div class="card">
+        <h3>For AI coding agents</h3>
+        <p>
+          Even the "convert Python to a plugin" workflow is agent-friendly.
+          Load the skill, point the agent at your Python module, and let it
+          drive decorators → codegen → install → verify end-to-end.
+        </p>
+        <ul style="margin-top: 12px;">
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/agent-friendly.md">Agent-friendly Guide (EN)</a><span class="badge-repo">in main repo</span>
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/agent-friendly.zh.md">面向 Agent 的指南 (ZH)</a><span class="badge-repo">in main repo</span>
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/skill/dsh-python-plugin/SKILL.md">Standard skill (SKILL.md)</a><span class="badge-repo">in main repo</span>
+            — drop this into an agent runtime that supports skills.
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/skill/dsh-python-plugin/references/contracts.md">skill/references/contracts.md</a><span class="badge-repo">in main repo</span>
+            and the other reference docs in the skill bundle
+            (<a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/skill/dsh-python-plugin/references/decorators.md">decorators</a>,
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/skill/dsh-python-plugin/references/manual-pipeline.md">manual pipeline</a>,
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/skill/dsh-python-plugin/references/pitfalls.md">pitfalls</a>).
+          </li>
+        </ul>
+      </div>
+
+      <!-- ========== Repo + upstream ========== -->
+      <div class="card">
+        <h3>Where the code lives</h3>
+        <p>
+          This site lives in the <code>site/</code> directory of the bridge
+          repo. The bridge is one half of a two-repo project.
+        </p>
+        <ul style="margin-top: 12px;">
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">peroxider/deepseek-hardness-python-bridge</a>
+            — this repo (the bridge)
+          </li>
+          <li>
+            <a href="https://github.com/deepseek-ai/deepseek-harness">deepseek-ai/deepseek-harness</a>
+            — upstream harness the bridge targets
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/issues">Issues</a>
+            — bugs, use cases, feature requests
+          </li>
+          <li>
+            <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/pulls">Pull requests</a>
+            — contributions welcome
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <hr>
+
+    <!-- ========== Reproduce locally ========== -->
+    <h2>Reproduce every claim on this site</h2>
+    <p>
+      The whole stack is reproducible offline. From the repo root:
+    </p>
+<pre><code># 43 pytest + 55+ E2E assertions + generated-package lifecycle
+node scripts/verify.mjs
+
+# Browse the site you are reading right now
+python3 -m http.server -d site 8000
+</code></pre>
+    <p class="muted">
+      That's it. No secrets, no install scripts, no remote dependencies.
+      If a claim on this site doesn't hold up after running the above,
+      it's a bug — please open an issue.
+    </p>
+
+    <hr>
+
+    <!-- ========== Contributing ========== -->
+    <h2>Contributing</h2>
+    <p>
+      The bridge follows the project's normal contribution flow:
+    </p>
+    <ol>
+      <li>
+        <strong>Open an issue first.</strong> Almost everything in
+        <a href="roadmap.html">Roadmap → In progress</a> started as one
+        user's concrete use case. A short description of your Python
+        module and the capability surface you want to expose goes a long
+        way.
+      </li>
+      <li>
+        <strong>Read the human-engineer guide.</strong> It covers the
+        verification pipeline end-to-end.
+      </li>
+      <li>
+        <strong>Make the change small.</strong> New decorators, new flags,
+        new parser branches — each one is its own PR.
+      </li>
+      <li>
+        <strong>Run <code>node scripts/verify.mjs</code></strong> before
+        sending the PR. CI runs the same suite.
+      </li>
+    </ol>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/CONTRIBUTING.md">
+        Read CONTRIBUTING
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/peroxider/deepseek-hardness-python-bridge">
+        View the repo
+      </a>
+    </div>
+
+    <hr>
+
+    <!-- ========== License ========== -->
+    <h2>License</h2>
+    <p>
+      <strong>MIT</strong> — same terms as the rest of the project
+      (see the "License" line at the bottom of the
+      <a href="../README.md">README</a>).
+    </p>
+
+    <!-- ========== End-of-trail CTA ========== -->
+    <div class="next-cta">
+      <div>
+        <div class="label">End of the trail</div>
+        <div class="title">Your Python is the dsh plugin ecosystem.</div>
+      </div>
+      <a class="btn btn-primary" href="index.html">
+        Back to overview <span class="arrow">→</span>
+      </a>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>dsh-bridge</strong> · Capability conversion, not reimplementation.
+    </div>
+    <div>
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Docs (EN)</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">文档 (ZH)</a> ·
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

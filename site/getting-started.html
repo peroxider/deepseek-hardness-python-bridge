@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Get started — dsh-bridge</title>
+  <meta name="description" content="Three steps from an existing Python module to a loaded deepseek-harness plugin: decorate, generate or install, wire it in cordis.yml.">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">
+      <span class="nav-brand-mark"></span>
+      dsh-bridge
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="getting-started.html" class="active">Get started</a></li>
+      <li><a href="decorators.html">Decorators</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="verification.html">Verification</a></li>
+      <li><a href="roadmap.html">Roadmap</a></li>
+      <li><a href="community.html">Community</a></li>
+    </ul>
+    <a class="nav-repo" href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub →</a>
+  </div>
+</nav>
+
+<main>
+
+  <header class="page-header container">
+    <div class="eyebrow">Get started</div>
+    <h1>Three steps to a native dsh plugin.</h1>
+    <p>
+      Most of the work is in the first step — annotating your Python with the
+      decorators that declare which capabilities you want to expose. The next
+      two steps are mechanical.
+    </p>
+  </header>
+
+  <section class="container section-sm">
+
+    <!-- ========== Step 1 ========== -->
+    <h2><span class="muted-2">Step 1.</span> Decorate</h2>
+    <p>
+      Pick a Python module you already have. Add a few decorators to mark
+      the class that should become a service, the function that should become
+      a model-visible tool, and the listener you want to attach to events.
+      Business logic doesn't move.
+    </p>
+
+<pre><code>from dataclasses import dataclass
+from dsh_bridge import provide_method, service, tool, on
+
+@service(name="ml")
+@dataclass
+class MLProvider:
+    """A stateful service — instantiated once per session, lives in ctx.ml."""
+    model_path: str
+
+    @provide_method(timeout_ms=10_000)
+    def embed(self, texts: list[str]) -&gt; list[list[float]]:
+        # Your existing implementation, untouched.
+        return self._model.encode(texts)
+
+@tool(name="shout", description="Upper-case a string.",
+      parameters={"text": {"type": "string"}})
+def shout(text: str) -&gt; dict:
+    # Tools are stateless; bridge wraps as ctx.tools.register(defineTool(...)).
+    return {"text": text.upper()}
+
+@on("session/event", mode="emit")
+def audit(event: str, payload: dict) -&gt; None:
+    # Listeners run on every emitted event of the matching namespace.
+    log_to_siem(event, payload)
+</code></pre>
+
+    <p>
+      A few details worth noting:
+    </p>
+    <ul>
+      <li>
+        <strong>Decorators return the original callable unchanged.</strong>
+        Without a bridge attached, this module imports and runs as plain Python.
+      </li>
+      <li>
+        <strong><code>@dataclass</code> on a <code>@service</code></strong>
+        lets the bridge forward <code>cordis.yml</code>'s <code>initArgs</code>
+        into <code>__init__</code> by field name — type-checked at the Python layer.
+      </li>
+      <li>
+        <strong>Type hints matter.</strong> They're inferred (PEP 484) and become
+        the JSON Schema the model sees for <code>@tool</code> parameters and
+        the TypeScript types on <code>@provide_method</code> return values.
+      </li>
+    </ul>
+
+    <hr>
+
+    <!-- ========== Step 2 ========== -->
+    <h2><span class="muted-2">Step 2.</span> Generate <em>or</em> Install</h2>
+    <p>
+      Pick the path that fits your situation.
+    </p>
+
+    <div class="cols-2">
+      <!-- Left: manual codegen path -->
+      <div>
+        <h3>Manual — when you want every artifact on disk</h3>
+        <p class="muted">
+          Run the codegen, then <code>tsc</code> it, then assemble the
+          plugin directory yourself. Good for monorepos where the bridge
+          packages live as workspace members.
+        </p>
+<pre><code># Generate the TypeScript bridge package
+pnpm dsh-bridge-codegen src/my_ml/provider.py \
+  --out  packages/@my-org/python-bridge-ml \
+  --name @my-org/python-bridge-ml
+
+# Build it (strict tsc)
+pnpm --filter @my-org/python-bridge-ml build
+</code></pre>
+        <p class="muted">
+          Then wire it in <code>cordis.yml</code> like any other plugin (Step 3).
+        </p>
+      </div>
+
+      <!-- Right: one-shot installer path -->
+      <div>
+        <h3>One-shot — when you're packaging for an existing dsh install</h3>
+        <p class="muted">
+          For a development-stage dsh install that can't load <code>.ts</code>
+          source directly. One command runs codegen → build → assemble → smoke
+          → patch, with each step leaving artifacts the next one consumes.
+        </p>
+<pre><code>scripts/install-python-plugin.py \
+  --source     path/to/bridge.py \
+  --name       '@my-org/lkb-bridge' \
+  --module     lkb_dsh.bridge \
+  --python-src path/to/my-python/src \
+  --config-json '{"boardId": "my-board"}'
+</code></pre>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 16px;">Installer flags</h3>
+    <p class="muted">
+      Every flag accepted by <code>scripts/install-python-plugin.py</code>:
+    </p>
+    <dl class="flags">
+      <dt><code>--source</code></dt><dd>Path to the decorated Python entry module. <strong>Required.</strong></dd>
+      <dt><code>--name</code></dt><dd>Plugin package name (e.g. <code>@my-org/lkb-bridge</code>). <strong>Required.</strong></dd>
+      <dt><code>--module</code></dt><dd>Dotted Python module path to import in the child runtime. <strong>Required.</strong></dd>
+      <dt><code>--python-src</code></dt><dd>Repeatable. Path(s) to your Python source tree to bundle into the self-contained plugin dir.</dd>
+      <dt><code>--plugin-dir</code></dt><dd>Where to assemble the plugin (default: derived from <code>--name</code>).</dd>
+      <dt><code>--id</code></dt><dd>Plugin id used in <code>cordis.yml</code> (default: derived from <code>--name</code>).</dd>
+      <dt><code>--profile</code></dt><dd>dsh install profile to patch (default: <code>web</code>).</dd>
+      <dt><code>--python-bin</code></dt><dd>Python interpreter the child process spawns (default: <code>python3</code>).</dd>
+      <dt><code>--config-json</code></dt><dd>JSON object merged into the plugin's <code>cordis.yml</code> <code>config:</code> block (default: <code>{}</code>).</dd>
+      <dt><code>--steps</code></dt><dd>Comma-separated subset to run (default: <code>codegen,build,assemble,smoke,patch</code>).</dd>
+      <dt><code>--uninstall</code></dt><dd>Reverse <code>patch</code> (and optionally <code>--delete-dir</code>).</dd>
+      <dt><code>--delete-dir</code></dt><dd>With <code>--uninstall</code>, also remove the plugin directory.</dd>
+      <dt><code>--dry-run</code></dt><dd>Print the would-be patch without writing anything.</dd>
+    </dl>
+    <p class="muted">
+      Environment overrides for non-standard machines:
+      <code>DSH_TSC</code>, <code>DSH_NODE</code>, <code>DSH_MONOREPO</code>,
+      <code>DSH_INSTALL</code>, <code>DSH_HOME</code>, <code>DSH_TYPE_ROOTS</code>.
+      The script falls back to dsh-bundled <code>js-yaml</code> if PyYAML is
+      absent, and to copying where symlinks are denied.
+    </p>
+
+    <hr>
+
+    <!-- ========== Step 3 ========== -->
+    <h2><span class="muted-2">Step 3.</span> Wire it in <code>cordis.yml</code></h2>
+    <p>
+      dsh-bridge plugins are first-class in <code>cordis.yml</code> — same
+      schema as a hand-written TS plugin, plus a small <code>config:</code>
+      block the bridge runtime reads.
+    </p>
+
+<pre><code>- id: ml
+  name: '@my-org/python-bridge-ml'
+  config:
+    pythonBin: python           # interpreter for the child process
+    module: my_ml.provider      # dotted path to your decorated module
+    className: MLProvider       # @service class to instantiate
+    sandbox: workspace-write    # dsh-side policy (NOT a bridge requirement)
+    modelPath: /opt/models/embeddings.npy   # forwarded as initArgs to MLProvider.__init__
+</code></pre>
+
+    <h3>What every config key means</h3>
+    <dl class="flags">
+      <dt><code>pythonBin</code></dt><dd>The interpreter invoked as the child process. <code>python</code>, <code>python3</code>, or an absolute path. The child runs <code>python -u -m dsh_bridge.runtime &lt;module&gt;</code>.</dd>
+      <dt><code>module</code></dt><dd>Dotted import path the child process loads. Anything importable in the bundled <code>python-src</code> tree works.</dd>
+      <dt><code>className</code></dt><dd>Name of the <code>@service</code> class to instantiate as the long-lived service. Omit if you only expose tools/listeners.</dd>
+      <dt><code>sandbox</code></dt><dd>dsh policy — not interpreted by the bridge. Use the same values you'd use for a TS plugin.</dd>
+      <dt>any other key</dt><dd>Forwarded as keyword args to the dataclass <code>__init__</code> by field name (e.g. <code>modelPath</code> → <code>model_path</code>).</dd>
+    </dl>
+
+    <hr>
+
+    <!-- ========== Smoke test ========== -->
+    <h2><span class="muted-2">Sanity check.</span> Confirm the child is alive</h2>
+    <p>
+      After dsh boots, the bridge runtime stays resident as a Python child
+      process. You can see it from another terminal:
+    </p>
+<pre><code>ps aux | grep dsh_bridge.runtime
+# → python -u -m dsh_bridge.runtime my_ml.provider
+</code></pre>
+    <p>
+      If you can see the child, the JSON-RPC channel is open: the
+      <code>shout</code> tool is registered with <code>ctx.tools</code>, the
+      <code>session/event</code> listener is attached, and <code>MLProvider.embed</code>
+      is reachable from any other plugin via <code>ctx.ml.embed(...)</code>.
+    </p>
+
+    <!-- ========== Next CTA ========== -->
+    <div class="next-cta">
+      <div>
+        <div class="label">Next</div>
+        <div class="title">See every decorator → its dsh surface</div>
+      </div>
+      <a class="btn btn-primary" href="decorators.html">
+        Open decorators reference <span class="arrow">→</span>
+      </a>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>dsh-bridge</strong> · Capability conversion, not reimplementation.
+    </div>
+    <div>
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Docs (EN)</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">文档 (ZH)</a> ·
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

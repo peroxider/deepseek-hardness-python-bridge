@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Decorators reference — dsh-bridge</title>
+  <meta name="description" content="Every decorator dsh-bridge exposes, the dsh surface it maps to, and the parameters it takes. Plus the JSON-RPC error envelope.">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">
+      <span class="nav-brand-mark"></span>
+      dsh-bridge
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="getting-started.html">Get started</a></li>
+      <li><a href="decorators.html" class="active">Decorators</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="verification.html">Verification</a></li>
+      <li><a href="roadmap.html">Roadmap</a></li>
+      <li><a href="community.html">Community</a></li>
+    </ul>
+    <a class="nav-repo" href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub →</a>
+  </div>
+</nav>
+
+<main>
+
+  <header class="page-header container">
+    <div class="eyebrow">Decorators reference</div>
+    <h1>Every decorator → its dsh surface.</h1>
+    <p>
+      The bridge exposes nine decorators. Each one maps a Python capability
+      to a specific surface of the deepseek-harness plugin contract. Pick
+      the row that matches what you want to expose — the table is the
+      contract.
+    </p>
+  </header>
+
+  <section class="container section-sm">
+
+    <h2>The capability mapping</h2>
+
+    <div class="table-wrap">
+      <table class="table-ref">
+        <thead>
+          <tr>
+            <th style="width: 32%;">Python decorator</th>
+            <th style="width: 38%;">Codegen target / dsh surface</th>
+            <th>Parameters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>@service(name, settings_namespace=None)</code></td>
+            <td><code>class XxxService extends Service</code> — mounted as <code>ctx.&lt;name&gt;</code>; other plugins can <code>inject</code> it.</td>
+            <td class="col-mono">name (str), settings_namespace (str | None)</td>
+          </tr>
+          <tr>
+            <td><code>@provide_method(timeout_ms=None, is_concurrency_safe=None)</code></td>
+            <td>Typed TS method that forwards the call into <code>bridge.call</code> on the Python child.</td>
+            <td class="col-mono">timeout_ms (int | None), is_concurrency_safe (bool | None)</td>
+          </tr>
+          <tr>
+            <td><code>@tool(name, description, parameters, ...)</code></td>
+            <td><code>ctx.tools.register(defineTool({...}))</code> — model-facing tool with JSON-Schema parameters.</td>
+            <td class="col-mono">name, description, parameters (dict), ...</td>
+          </tr>
+          <tr>
+            <td><code>@on(event, mode='emit', prepend=False, global_=False)</code></td>
+            <td><code>ctx.on(event, handler, { mode, prepend, global })</code> — typed event listener.</td>
+            <td class="col-mono">event (str), mode (str), prepend (bool), global_ (bool)</td>
+          </tr>
+          <tr>
+            <td><code>@capability(seam, backend)</code></td>
+            <td><code>ctx.&lt;seam&gt;.backend.register(backend, impl)</code> — replacement provider for a capability seam.</td>
+            <td class="col-mono">seam (str), backend (str)</td>
+          </tr>
+          <tr>
+            <td><code>@method(name=None)</code></td>
+            <td>A method on a capability backend class.</td>
+            <td class="col-mono">name (str | None)</td>
+          </tr>
+          <tr>
+            <td><code>@system_prompt_section(order, text)</code></td>
+            <td><code>ctx.systemPrompt.section({ order, text })</code> — contribution to the agent's system prompt.</td>
+            <td class="col-mono">order (int), text (str)</td>
+          </tr>
+          <tr>
+            <td><code>@guard()</code></td>
+            <td><code>ctx.tools.guard(fn)</code> — tool-policy hook.</td>
+            <td class="col-mono">(none — decorator form)</td>
+          </tr>
+          <tr>
+            <td><code>@restrict_tools(allow=None, deny=None)</code></td>
+            <td><code>ctx.tools.restrict({ allow, deny })</code> — allow/deny lists applied to model tool calls.</td>
+            <td class="col-mono">allow (list[str] | None), deny (list[str] | None)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>What ships vs. what's parsed-but-not-yet-emitted</h3>
+    <p>
+      Today, the codegen emits code for the first four rows
+      (<code>@service</code>, <code>@provide_method</code>, <code>@tool</code>,
+      <code>@on</code>). The remaining five rows are parsed and recorded in
+      the IR but don't yet produce generated code — see
+      <a href="roadmap.html">Roadmap</a> for the current sequencing.
+    </p>
+
+    <hr>
+
+    <h2>Error envelope</h2>
+    <p>
+      Every Python exception raised inside a decorated method is translated
+      into a JSON-RPC <code>error</code> with a stable <code>code</code> and a
+      <code>data.kind</code>. The TypeScript side maps these back into the
+      same categories a hand-written plugin would produce.
+    </p>
+
+    <div class="table-wrap">
+      <table class="table-ref">
+        <thead>
+          <tr>
+            <th>Python exception</th>
+            <th>JSON-RPC <code>code</code></th>
+            <th><code>data.kind</code></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>TimeoutError</code></td><td class="col-mono">-32001</td><td><code>timeout</code></td></tr>
+          <tr><td><code>asyncio.CancelledError</code></td><td class="col-mono">-32002</td><td><code>abort</code></td></tr>
+          <tr><td><code>PermissionError</code></td><td class="col-mono">-32003</td><td><code>permission</code></td></tr>
+          <tr><td><code>ValueError</code></td><td class="col-mono">-32004</td><td><code>invalid-args</code></td></tr>
+          <tr><td><code>KeyError</code> / <code>AttributeError</code></td><td class="col-mono">-32005</td><td><code>not-found</code></td></tr>
+          <tr><td><code>ConnectionError</code></td><td class="col-mono">-32010</td><td><code>bridge-down</code></td></tr>
+          <tr><td>any other</td><td class="col-mono">-32603</td><td><code>exception</code></td></tr>
+          <tr><td>process exit during call</td><td class="col-mono">-32011</td><td><code>worker-exit</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <!-- ========== Next CTA ========== -->
+    <div class="next-cta">
+      <div>
+        <div class="label">Next</div>
+        <div class="title">Understand how it runs under the hood</div>
+      </div>
+      <a class="btn btn-primary" href="architecture.html">
+        Open architecture <span class="arrow">→</span>
+      </a>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>dsh-bridge</strong> · Capability conversion, not reimplementation.
+    </div>
+    <div>
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Docs (EN)</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">文档 (ZH)</a> ·
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

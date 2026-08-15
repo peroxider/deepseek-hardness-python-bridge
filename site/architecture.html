@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture — dsh-bridge</title>
+  <meta name="description" content="How dsh-bridge turns a decorated Python module into a native dsh plugin: codegen, long-lived child process, NDJSON JSON-RPC 2.0 over stdio, no shared memory.">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">
+      <span class="nav-brand-mark"></span>
+      dsh-bridge
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="getting-started.html">Get started</a></li>
+      <li><a href="decorators.html">Decorators</a></li>
+      <li><a href="architecture.html" class="active">Architecture</a></li>
+      <li><a href="verification.html">Verification</a></li>
+      <li><a href="roadmap.html">Roadmap</a></li>
+      <li><a href="community.html">Community</a></li>
+    </ul>
+    <a class="nav-repo" href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub →</a>
+  </div>
+</nav>
+
+<main>
+
+  <header class="page-header container">
+    <div class="eyebrow">Architecture</div>
+    <h1>How a Python module becomes a native dsh plugin.</h1>
+    <p>
+      No FFI, no in-process CPython, no shared memory. The bridge compiles
+      your decorated Python into a TypeScript plugin that mounts like any
+      other, then talks to a long-lived Python child process over NDJSON
+      JSON-RPC 2.0 on stdio.
+    </p>
+  </header>
+
+  <section class="container section-sm">
+
+    <!-- ========== Data flow diagram ========== -->
+    <h2>The data flow</h2>
+
+    <div class="diagram-wrap">
+<svg viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data flow from your.py through codegen to plugin/, then a Python child process bridges to Cordis ctx via stdio.">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a0a0a8"/>
+    </marker>
+    <marker id="arrow-rev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#06b6d4"/>
+    </marker>
+    <style>
+      .box { fill: #141416; stroke: #26262a; stroke-width: 1; }
+      .box-emph { stroke: url(#g1); stroke-width: 1.5; }
+      .label { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; fill: #f5f5f7; }
+      .label-sm { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; fill: #a0a0a8; }
+      .arrow-line { stroke: #a0a0a8; stroke-width: 1.2; fill: none; }
+      .bridge-line { stroke: url(#g1); stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Top pipeline: build path -->
+  <text x="20" y="28" class="label-sm">— build path —</text>
+
+  <!-- Boxes -->
+  <rect class="box" x="20"  y="40" width="90"  height="56" rx="6"/>
+  <text class="label" x="65"  y="68" text-anchor="middle">your.py</text>
+  <text class="label-sm" x="65" y="84" text-anchor="middle">@service, @tool,</text>
+  <text class="label-sm" x="65" y="96" text-anchor="middle">@on, ...</text>
+
+  <rect class="box" x="140" y="40" width="100" height="56" rx="6"/>
+  <text class="label" x="190" y="68" text-anchor="middle">AST parse</text>
+  <text class="label-sm" x="190" y="84" text-anchor="middle">decorator-aware</text>
+  <text class="label-sm" x="190" y="96" text-anchor="middle">scanner</text>
+
+  <rect class="box" x="270" y="40" width="100" height="56" rx="6"/>
+  <text class="label" x="320" y="68" text-anchor="middle">codegen</text>
+  <text class="label-sm" x="320" y="84" text-anchor="middle">@deepseek-ai/</text>
+  <text class="label-sm" x="320" y="96" text-anchor="middle">dsh-bridge-codegen</text>
+
+  <rect class="box" x="400" y="40" width="110" height="56" rx="6"/>
+  <text class="label" x="455" y="68" text-anchor="middle">generated.ts</text>
+  <text class="label-sm" x="455" y="84" text-anchor="middle">typed bridge</text>
+  <text class="label-sm" x="455" y="96" text-anchor="middle">package</text>
+
+  <rect class="box" x="540" y="40" width="80"  height="56" rx="6"/>
+  <text class="label" x="580" y="68" text-anchor="middle">tsc</text>
+  <text class="label-sm" x="580" y="96" text-anchor="middle">strict</text>
+
+  <rect class="box box-emph" x="650" y="40" width="60" height="56" rx="6"/>
+  <text class="label" x="680" y="68" text-anchor="middle">plugin/</text>
+  <text class="label-sm" x="680" y="84" text-anchor="middle">self-contained</text>
+
+  <!-- Pipeline arrows -->
+  <path class="arrow-line" d="M110,68 L140,68" marker-end="url(#arrow)"/>
+  <path class="arrow-line" d="M240,68 L270,68" marker-end="url(#arrow)"/>
+  <path class="arrow-line" d="M370,68 L400,68" marker-end="url(#arrow)"/>
+  <path class="arrow-line" d="M510,68 L540,68" marker-end="url(#arrow)"/>
+  <path class="arrow-line" d="M620,68 L650,68" marker-end="url(#arrow)"/>
+
+  <!-- Connector from plugin/ down to runtime -->
+  <path class="arrow-line" d="M680,96 L680,200" marker-end="url(#arrow)"/>
+  <text class="label-sm" x="688" y="160">plugin loaded</text>
+  <text class="label-sm" x="688" y="174">by Cordis Loader</text>
+
+  <!-- Bottom: runtime + Cordis ctx -->
+  <text x="20" y="220" class="label-sm">— runtime path —</text>
+
+  <rect class="box box-emph" x="20" y="232" width="200" height="100" rx="6"/>
+  <text class="label" x="120" y="258" text-anchor="middle">Python child process</text>
+  <text class="label-sm" x="120" y="278" text-anchor="middle">python -u -m dsh_bridge.runtime &lt;module&gt;</text>
+  <text class="label-sm" x="120" y="294" text-anchor="middle">long-lived; reconnect ladder;</text>
+  <text class="label-sm" x="120" y="306" text-anchor="middle">env scrub; worker-exit teardown</text>
+
+  <rect class="box" x="430" y="232" width="260" height="100" rx="6"/>
+  <text class="label" x="560" y="258" text-anchor="middle">Cordis ctx (dsh)</text>
+  <text class="label-sm" x="560" y="278" text-anchor="middle">ctx.&lt;name&gt;  ·  ctx.tools.register(...)</text>
+  <text class="label-sm" x="560" y="294" text-anchor="middle">ctx.on(...)  ·  ctx.&lt;seam&gt;.backend</text>
+  <text class="label-sm" x="560" y="310" text-anchor="middle">sandboxing · approval · persistence</text>
+
+  <!-- Bridge line: NDJSON JSON-RPC 2.0 stdio -->
+  <path class="bridge-line" d="M225,282 L425,282" marker-end="url(#arrow-rev)"/>
+  <path class="bridge-line" d="M425,295 L225,295" marker-end="url(#arrow-rev)"/>
+  <rect x="250" y="262" width="160" height="22" fill="#0a0a0b"/>
+  <text class="label" x="330" y="277" text-anchor="middle">NDJSON · JSON-RPC 2.0</text>
+  <text class="label-sm" x="330" y="310" text-anchor="middle">stdio</text>
+</svg>
+    </div>
+
+    <hr>
+
+    <!-- ========== Three explanatory cards ========== -->
+    <h2>Three things worth knowing</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Why a subprocess, not Pyodide / pyo3</h3>
+        <p>
+          <strong>No CPython invasion.</strong> Whatever you can
+          <code>pip install</code> works as-is — no recompile, no adapter layer,
+          no compatibility matrix.
+        </p>
+        <p>
+          <strong>Crash isolation.</strong> A bad import, a segfault, an OOM —
+          all confined to the child. The harness keeps running; the bridge
+          has a teardown ladder (<code>worker-exit</code>, reconnect,
+          env scrub).
+        </p>
+        <p>
+          <strong>Clear message boundary.</strong> Method call = message. No
+          shared memory, no GIL entanglement. The protocol is JSON-RPC, so
+          every cross-boundary interaction is auditable and replayable.
+        </p>
+      </div>
+      <div class="card">
+        <h3>What flows on stdio</h3>
+        <p>
+          One JSON object per line (NDJSON framing). Each line is a JSON-RPC
+          2.0 request, response, or notification — correlated by
+          <code>id</code> for call/response, fire-and-forget for
+          <code>@on</code> listeners.
+        </p>
+        <p>
+          Arguments and return values are inferred from PEP 484 type hints
+          (see <a href="decorators.html">Decorators</a>) and serialized as
+          plain JSON. Python <code>dataclass</code> returns must be
+          <code>asdict()</code>'d first — anything that isn't JSON-roundtrip
+          safe will fail the call with a <code>-32603 / exception</code>.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Where the bridge ends and dsh begins</h3>
+        <p>
+          The generated TS plugin is a real Cordis plugin. It receives the
+          same sandboxing, env scrub, approval flow, session log, and
+          persistence as a hand-written one — the bridge does not invent a
+          parallel runtime.
+        </p>
+        <p>
+          Method calls, tool calls, and event emissions go through the same
+          Cordis surface either side would. The Python process is just where
+          the methods happen to execute.
+        </p>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- ========== Non-goals ========== -->
+    <h2>What this bridge explicitly is not</h2>
+    <ul>
+      <li>
+        <strong>Not an in-process CPython embedder.</strong> No Pyodide, no pyo3.
+        The runtime stays in a separate process you can <code>ps</code> and
+        signal like any other.
+      </li>
+      <li>
+        <strong>Not a Python reimplementation of Cordis.</strong> Python
+        modules attach to dsh's existing Cordis context — they don't replace
+        it.
+      </li>
+      <li>
+        <strong>Not bidirectional shared-memory state.</strong> All
+        cross-boundary interaction is message-passing. If you need shared
+        state, design it as a service with explicit methods.
+      </li>
+      <li>
+        <strong>Not a replacement for Code Mode's planned Python backend.</strong>
+        Complementary, not competing — Code Mode's Python plans and the
+        bridge target different integration points.
+      </li>
+    </ul>
+
+    <!-- ========== Next CTA ========== -->
+    <div class="next-cta">
+      <div>
+        <div class="label">Next</div>
+        <div class="title">See the proof it's actually running</div>
+      </div>
+      <a class="btn btn-primary" href="verification.html">
+        Open verification <span class="arrow">→</span>
+      </a>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>dsh-bridge</strong> · Capability conversion, not reimplementation.
+    </div>
+    <div>
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Docs (EN)</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">文档 (ZH)</a> ·
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

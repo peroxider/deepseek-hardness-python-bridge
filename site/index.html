@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dsh-bridge — Turn your Python into a native deepseek-harness plugin</title>
+  <meta name="description" content="Capability conversion, not reimplementation. Python stays Python — deepseek-harness sees a native plugin. Decorate, generate, wire in cordis.yml.">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<!-- ===== Shared nav (copy-pasted on every page; class="active" marks the current route) ===== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">
+      <span class="nav-brand-mark"></span>
+      dsh-bridge
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Overview</a></li>
+      <li><a href="getting-started.html">Get started</a></li>
+      <li><a href="decorators.html">Decorators</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="verification.html">Verification</a></li>
+      <li><a href="roadmap.html">Roadmap</a></li>
+      <li><a href="community.html">Community</a></li>
+    </ul>
+    <a class="nav-repo" href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub →</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero container">
+    <div class="hero-eyebrow">
+      <span class="dot"></span>
+      dsh-bridge · Python capability bridge
+    </div>
+
+    <h1 class="hero-headline">
+      Turn your Python into a native<br>
+      <span class="grad">deepseek-harness</span> plugin.
+    </h1>
+
+    <p class="hero-sub">
+      <strong>Capability conversion, not reimplementation.</strong>
+      Python stays Python — the harness sees a native plugin.
+      Decorate a module, generate a TypeScript bridge, wire it in
+      <code>cordis.yml</code>. No rewriting. No Pyodide. No FFI.
+    </p>
+
+    <!-- The single biggest-highlight gradient callout — first thing under the headline -->
+    <div class="callout">
+      <div class="callout-label">★ The biggest highlight</div>
+      <div class="callout-title">
+        Zero changes to your Python business code.
+      </div>
+      <p class="callout-body">
+        Every decorator returns the original callable unchanged.
+        When no bridge is attached, your code runs unmodified — same source,
+        same semantics, just declared capabilities. The bridge is <em>declarative metadata</em>,
+        not a code rewrite.
+      </p>
+    </div>
+
+    <!-- Simplest usage — a single code card with CSS-only tab switcher -->
+    <div class="tabs">
+      <input type="radio" id="tab-decorators" name="usagetab" class="tabs-input" checked>
+      <input type="radio" id="tab-installer" name="usagetab" class="tabs-input">
+
+      <div class="tabs-tabs">
+        <label for="tab-decorators" class="tabs-tab">3 decorators + cordis.yml</label>
+        <label for="tab-installer" class="tabs-tab">One command, end-to-end</label>
+      </div>
+
+      <div class="tabs-panels">
+        <!-- Panel A: decorators + minimal wiring -->
+        <div class="tabs-panel panel-decorators">
+<pre><code># src/my_ml/provider.py — your existing Python, lightly annotated
+from dataclasses import dataclass
+from dsh_bridge import provide_method, service, tool, on
+
+@service(name="ml")
+@dataclass
+class MLProvider:
+    model_path: str
+    @provide_method(timeout_ms=10_000)
+    def embed(self, texts: list[str]) -&gt; list[list[float]]:
+        return [[0.0] * 768 for _ in texts]
+
+@tool(name="shout", description="Upper-case a string.",
+      parameters={"text": {"type": "string"}})
+def shout(text: str) -&gt; dict:
+    return {"text": text.upper()}
+
+@on("session/event", mode="emit")
+def audit(event: str, payload: dict) -&gt; None:
+    ...
+</code></pre>
+<pre><code># cordis.yml — wire it in
+- id: ml
+  name: '@my-org/python-bridge-ml'
+  config:
+    pythonBin: python
+    module: my_ml.provider
+    className: MLProvider
+    sandbox: workspace-write
+    modelPath: /opt/models/embeddings.npy
+</code></pre>
+          <p class="muted" style="margin-top: 8px;">
+            <small>Generate step in between: <code>pnpm dsh-bridge-codegen src/my_ml/provider.py --out packages/@my-org/python-bridge-ml --name @my-org/python-bridge-ml</code></small>
+          </p>
+        </div>
+
+        <!-- Panel B: one-command installer -->
+        <div class="tabs-panel panel-installer">
+<pre><code># One command: codegen → build → assemble → smoke → patch
+scripts/install-python-plugin.py \
+  --source     path/to/bridge.py \
+  --name       '@my-org/lkb-bridge' \
+  --module     lkb_dsh.bridge \
+  --python-src path/to/my-python/src \
+  --config-json '{"boardId": "my-board"}'
+</code></pre>
+          <p class="muted" style="margin-top: 8px;">
+            <small>
+              Steps are decoupled — run any subset via
+              <code>--steps codegen,build,assemble,smoke,patch</code>.
+              <code>--dry-run</code> prints the patch without writing;
+              <code>--uninstall</code> reverses it.
+              Env overrides: <code>DSH_TSC</code>, <code>DSH_NODE</code>, <code>DSH_MONOREPO</code>, <code>DSH_INSTALL</code>.
+            </small>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="getting-started.html">
+        Get started <span class="arrow">→</span>
+      </a>
+      <a class="btn btn-secondary" href="verification.html">
+        Read the verification
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/peroxider/deepseek-hardness-python-bridge">
+        View on GitHub
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== Trust strip ===== -->
+  <section class="container">
+    <div class="trust-strip">
+      <div class="trust-item"><span class="check">✓</span> 43 pytest</div>
+      <div class="trust-item"><span class="check">✓</span> 55+ E2E assertions</div>
+      <div class="trust-item"><span class="check">✓</span> Real Cordis Loader</div>
+      <div class="trust-item"><span class="check">✓</span> tsc strict · 0 errors</div>
+    </div>
+  </section>
+
+  <!-- ===== Why this exists ===== -->
+  <section class="container section">
+    <h2>Why this exists</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>dsh's plugin surface is TypeScript-only.</h3>
+        <p>
+          <a href="https://github.com/deepseek-ai/deepseek-harness">deepseek-harness</a> plugins are TS packages that mount via Cordis
+          (<code>ctx.&lt;name&gt;</code> services, <code>ctx.tools.register(...)</code>,
+          <code>ctx.on(...)</code>). The richest capability libraries — sklearn, PyTorch, NumPy — aren't.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Your Python <em>is</em> the capability.</h3>
+        <p>
+          A capability that took you months to tune shouldn't be re-validated
+          in another language. dsh-bridge lets the algorithms, libraries, and
+          state stay in Python; the harness sees a native plugin.
+        </p>
+      </div>
+      <div class="card">
+        <h3>No reimplementation. No Pyodide. No FFI.</h3>
+        <p>
+          The bridge spawns a long-lived Python child process and forwards
+          decorated methods over NDJSON JSON-RPC 2.0 on stdio. <code>pip install</code>
+          works as-is; crashes are isolated to the child.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== Shared footer ===== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>dsh-bridge</strong> · Capability conversion, not reimplementation.
+    </div>
+    <div>
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Docs (EN)</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">文档 (ZH)</a> ·
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

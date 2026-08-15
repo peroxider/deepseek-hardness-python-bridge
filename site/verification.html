@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verification — dsh-bridge</title>
+  <meta name="description" content="Four tiers of reproducible verification: 43 pytest, 55+ E2E assertions, real Cordis Loader composition, strict tsc -b zero errors. Plus the honest limits.">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">
+      <span class="nav-brand-mark"></span>
+      dsh-bridge
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="getting-started.html">Get started</a></li>
+      <li><a href="decorators.html">Decorators</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="verification.html" class="active">Verification</a></li>
+      <li><a href="roadmap.html">Roadmap</a></li>
+      <li><a href="community.html">Community</a></li>
+    </ul>
+    <a class="nav-repo" href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub →</a>
+  </div>
+</nav>
+
+<main>
+
+  <header class="page-header container">
+    <div class="eyebrow">Verification</div>
+    <h1>Not a PPT. Run it yourself.</h1>
+    <p>
+      The premise is proven by four tiers of reproducible verification.
+      Everything below is one command and one shell session away — no
+      trust required.
+    </p>
+  </header>
+
+  <section class="container section-sm">
+
+    <h2>The one command</h2>
+    <p>
+      Reproducible offline verification of every tier this page describes
+      (where the tooling is available on the host):
+    </p>
+<pre><code>node scripts/verify.mjs
+</code></pre>
+    <p class="muted">
+      That single script drives the Python suite, the offline TS E2E,
+      the real-child runtime E2E, and the generated-package E2E — and, when
+      a real dsh monorepo checkout is present, the REAL-composition and
+      strict typecheck tiers too.
+    </p>
+
+    <hr>
+
+    <!-- ========== 4-tier verification ========== -->
+    <h2>The four tiers</h2>
+
+    <div class="card">
+      <h3>1 · Python suite <span class="chip chip-ok" style="margin-left:8px;"><span class="dot"></span>43 tests</span></h3>
+      <p>
+        Covers the decorators end-to-end, PEP 484 → JSON Schema type
+        inference, the JSON-RPC runtime, and a real Python subprocess
+        integration test over stdio.
+      </p>
+<pre><code>cd python/sdk-dsl &amp;&amp; PYTHONPATH=src python3 -m pytest tests/
+# → 43 passed in 1.6s
+</code></pre>
+    </div>
+
+    <div class="card">
+      <h3>2 · Offline TypeScript E2E <span class="chip chip-ok" style="margin-left:8px;"><span class="dot"></span>55+ assertions</span></h3>
+      <p>
+        Plain-Node assertions with no package install. Covers codegen emission,
+        runtime lifecycle (worker-exit, reconnect, teardown ladder, env scrub),
+        a real <code>python3</code> child round-trip, and a generated package
+        mounted on a stub Cordis context.
+      </p>
+<pre><code>node scripts/verify.mjs   # runs the offline tier
+# → ALL OK · codegen/runtime/lifecycle/real-child/generated-package
+</code></pre>
+    </div>
+
+    <div class="card">
+      <h3>3 · REAL-composition <span class="chip chip-ok" style="margin-left:8px;"><span class="dot"></span>real Cordis</span></h3>
+      <p>
+        A test <code>cordis.yml</code> booted through the
+        <em>genuine</em> vendored Cordis Loader (<code>vendor/loader</code> +
+        <code>vendor/include</code>): real schemastery applying the generated
+        <code>static Config</code>, the real <code>ToolRuntime</code> holding
+        the registered tool, a real <code>ctx.emit('session/event')</code>
+        reaching the Python listener, and <code>ctx.fiber.dispose()</code>
+        tearing the child down through the effect disposers.
+      </p>
+<pre><code>scripts/setup-integration.mjs   # one-time
+node tests/integration/real-composition.mjs
+# → plugin loaded · tool registered · event delivered · child disposed
+</code></pre>
+    </div>
+
+    <div class="card">
+      <h3>4 · Strict typecheck <span class="chip chip-ok" style="margin-left:8px;"><span class="dot"></span>0 errors</span></h3>
+      <p>
+        <code>tsc -b</code> over the two bridge packages and a generated
+        example package, inside the monorepo's project-reference graph.
+        TypeScript 6.0.3 with the monorepo <code>tsconfig.base.json</code>
+        flags: <code>strict</code>, <code>noUncheckedIndexedAccess</code>,
+        <code>exactOptionalPropertyTypes</code>.
+      </p>
+<pre><code>scripts/typecheck-integration.mjs
+# → tsc -b : 0 errors
+</code></pre>
+    </div>
+
+    <hr>
+
+    <!-- ========== Honest limits ========== -->
+    <h2>Honest limits</h2>
+    <p>
+      Everything above is real, and it's the strongest evidence available
+      without running in your specific environment. Before you rely on the
+      bridge, you should also know what it doesn't (yet) do:
+    </p>
+
+    <ul>
+      <li>
+        <strong>The parser is regex-based.</strong> "Any Python module" means
+        the constrained decorator shape: keyword-argument decorators with
+        one leading positional name (<code>@service(name='ml', ...)</code>).
+        Qualified calls (<code>@dsh_bridge.service(...)</code>), import
+        aliases (<code>from dsh_bridge import service as svc</code>), and
+        non-keyword arguments are silently ignored.
+        Only the first <code>@service</code> class per module is emitted;
+        non-dataclass <code>__init__</code> parameters are not introspected.
+      </li>
+      <li>
+        <strong>Five decorators are parsed but not yet emitted.</strong>
+        <code>@capability</code>, <code>@method</code>,
+        <code>@guard</code>, <code>@restrict_tools</code>,
+        and <code>@system_prompt_section</code> appear in the IR but produce
+        no generated code today. See <a href="roadmap.html">Roadmap</a> for
+        the sequence they're being added in.
+      </li>
+      <li>
+        <strong>Vitest suites in the standalone repo are unrun.</strong>
+        The vitest configurations under
+        <code>packages/bridge/*/tests/</code> depend on a vitest closure
+        that isn't available offline. Their assertions are mirrored by the
+        plain-Node E2E scripts in <code>tests/e2e/</code> and run for real
+        inside the monorepo.
+      </li>
+      <li>
+        <strong>Monorepo integration is verified, not merged.</strong>
+        The deepseek-harness checkout holds the bridge packages plus a
+        <code>tsconfig.base.json</code> paths registration as uncommitted
+        working-tree changes from the verification run — they're
+        reproducible from this repo, but they aren't a PR into
+        <code>deepseek-ai/deepseek-harness</code> yet.
+      </li>
+    </ul>
+
+    <!-- ========== Next CTA ========== -->
+    <div class="next-cta">
+      <div>
+        <div class="label">Next</div>
+        <div class="title">See what's done, in progress, and next</div>
+      </div>
+      <a class="btn btn-primary" href="roadmap.html">
+        Open roadmap <span class="arrow">→</span>
+      </a>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>dsh-bridge</strong> · Capability conversion, not reimplementation.
+    </div>
+    <div>
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Docs (EN)</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">文档 (ZH)</a> ·
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

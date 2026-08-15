@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roadmap — dsh-bridge</title>
+  <meta name="description" content="What dsh-bridge has shipped, what it's actively working on, and what's queued next — alongside the explicit non-goals so you don't ask twice.">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">
+      <span class="nav-brand-mark"></span>
+      dsh-bridge
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="getting-started.html">Get started</a></li>
+      <li><a href="decorators.html">Decorators</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="verification.html">Verification</a></li>
+      <li><a href="roadmap.html" class="active">Roadmap</a></li>
+      <li><a href="community.html">Community</a></li>
+    </ul>
+    <a class="nav-repo" href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub →</a>
+  </div>
+</nav>
+
+<main>
+
+  <header class="page-header container">
+    <div class="eyebrow">Roadmap</div>
+    <h1>Shipped, in progress, and next.</h1>
+    <p>
+      A flat list of what's in your hands today, what's actively being built,
+      and what's queued — plus the explicit non-goals so you don't have to
+      ask twice.
+    </p>
+  </header>
+
+  <section class="container section-sm">
+
+    <div class="card-grid">
+
+      <!-- ========== Shipped ========== -->
+      <div class="card">
+        <h3>
+          <span class="chip chip-ok"><span class="dot"></span>shipped</span>
+        </h3>
+        <p>Already in your hands today.</p>
+        <ul style="margin-top: 12px;">
+          <li>
+            <strong>Four emitting decorators</strong> —
+            <code>@service</code>, <code>@provide_method</code>,
+            <code>@tool</code>, <code>@on</code>.
+          </li>
+          <li>
+            <strong>Four-tier verification</strong> — 43 pytest,
+            55+ offline E2E assertions, REAL-composition through the
+            genuine Cordis Loader, strict <code>tsc -b</code> zero errors.
+          </li>
+          <li>
+            <strong>One-command installer</strong> —
+            <code>scripts/install-python-plugin.py</code> running
+            codegen → build → assemble → smoke → patch.
+          </li>
+          <li>
+            <strong>Agent-friendly skill</strong> —
+            <code>skill/dsh-python-plugin/SKILL.md</code> for AI coding
+            agents driving the whole conversion.
+          </li>
+          <li>
+            <strong>Bilingual docs</strong> — Human Engineer Guide and
+            Agent-friendly Guide, both EN and ZH.
+          </li>
+          <li>
+            <strong>Self-contained plugin packaging</strong> — the
+            generated TS plus bundled <code>python-src</code> drops into
+            any dsh install without external Python dependencies.
+          </li>
+        </ul>
+      </div>
+
+      <!-- ========== In progress ========== -->
+      <div class="card">
+        <h3>
+          <span class="chip chip-warn"><span class="dot"></span>in progress</span>
+        </h3>
+        <p>Being worked on now.</p>
+        <ul style="margin-top: 12px;">
+          <li>
+            <strong>Emit <code>@capability</code> / <code>@method</code></strong>
+            — wire capability-seam replacements so a Python class can
+            stand in for <code>ctx.fs</code>, <code>ctx.shell</code>,
+            <code>ctx.subprocess</code>, etc.
+          </li>
+          <li>
+            <strong>Emit <code>@guard</code> / <code>@restrict_tools</code></strong>
+            — full tool-policy hooks (allow / deny lists, guard callbacks)
+            round-tripping through JSON-RPC.
+          </li>
+          <li>
+            <strong>Emit <code>@system_prompt_section</code></strong> —
+            contribution to the agent's system prompt with explicit ordering.
+          </li>
+          <li>
+            <strong>Parser generalization</strong> — accept
+            <code>@dsh_bridge.service(...)</code> qualified calls and
+            <code>from dsh_bridge import service as svc</code> import
+            aliases.
+          </li>
+        </ul>
+      </div>
+
+      <!-- ========== Next ========== -->
+      <div class="card">
+        <h3>
+          <span class="chip chip-info"><span class="dot"></span>next</span>
+        </h3>
+        <p>Queued after the above.</p>
+        <ul style="margin-top: 12px;">
+          <li>
+            <strong>Non-dataclass <code>__init__</code> introspection</strong>
+            — accept services whose constructor takes regular
+            <code>def __init__(self, foo, bar)</code> arguments, not just
+            <code>@dataclass</code>.
+          </li>
+          <li>
+            <strong>Multiple <code>@service</code> per module</strong> —
+            today only the first <code>@service</code> class is emitted.
+            Lift that restriction so a single module can publish several
+            services at once.
+          </li>
+          <li>
+            <strong>Standalone-vitest path</strong> — get the vitest suites
+            under <code>packages/bridge/*/tests/</code> running in the
+            standalone repo (not just inside the monorepo).
+          </li>
+          <li>
+            <strong>Open a PR into <code>deepseek-ai/deepseek-harness</code></strong>
+            — turn the verified monorepo working-tree changes into a real
+            upstream PR.
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <hr>
+
+    <!-- ========== Non-goals ========== -->
+    <h2>What we'll never do (so you don't ask twice)</h2>
+    <p>
+      Some design decisions were deliberate. Listed here so a feature
+      request that would walk them back gets a quick, polite no.
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>No in-process CPython.</h3>
+        <p>
+          No Pyodide, no pyo3. The bridge's value depends on
+          <code>pip install</code>-as-is working without recompilation or
+          adapter layers.
+        </p>
+      </div>
+      <div class="card">
+        <h3>No Python Cordis.</h3>
+        <p>
+          Python modules attach to dsh's existing Cordis context. We are
+          not reimplementing Cordis on the Python side.
+        </p>
+      </div>
+      <div class="card">
+        <h3>No shared-memory state.</h3>
+        <p>
+          All cross-boundary interaction is message-passing over JSON-RPC.
+          If you want shared state, model it as a service with explicit
+          methods.
+        </p>
+      </div>
+      <div class="card">
+        <h3>No Code Mode replacement.</h3>
+        <p>
+          Complementary to Code Mode's planned Python backend. Different
+          integration points; we don't compete.
+        </p>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- ========== Influence the roadmap ========== -->
+    <h2>Influence the roadmap</h2>
+    <p>
+      The fastest way to move something into "next" is a concrete use
+      case. Open an issue, link your Python module, and describe the
+      capability surface you want to expose — almost everything above
+      started as a single issue.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/peroxider/deepseek-hardness-python-bridge/issues">
+        Open an issue <span class="arrow">→</span>
+      </a>
+      <a class="btn btn-secondary" href="community.html">
+        Community & contributing
+      </a>
+    </div>
+
+    <!-- ========== Next CTA ========== -->
+    <div class="next-cta">
+      <div>
+        <div class="label">Next</div>
+        <div class="title">Join the humans and agents using it</div>
+      </div>
+      <a class="btn btn-primary" href="community.html">
+        Open community <span class="arrow">→</span>
+      </a>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>dsh-bridge</strong> · Capability conversion, not reimplementation.
+    </div>
+    <div>
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge">GitHub</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/README.md">README</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.md">Docs (EN)</a> ·
+      <a href="https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/docs/guides/human-engineer.zh.md">文档 (ZH)</a> ·
+      <span class="muted">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
