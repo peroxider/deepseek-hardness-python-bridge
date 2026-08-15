@@ -2,6 +2,8 @@
 
 [English](README.md) | 中文
 
+🌐 **[在线站点 →](https://peroxider.github.io/deepseek-hardness-python-bridge/)** — 面向发现的产品页（hero、装饰器参考、架构图、验证、路线图）。
+
 > **将 Python 模块转化为 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 可用的插件。**
 >
 > 本仓库把现有 Python 代码 —— ML 流水线、NumPy/SciPy/pandas/PyTorch/scikit-learn 算法、图像工具、自定义 provider —— 转化为一等公民的 dsh 插件：agent harness 可以从 `cordis.yml` 加载它、把它作为 Cordis service 注入、把它注册为模型可见的工具、并把它接入事件监听与 capability seam。
@@ -16,6 +18,7 @@
 
 | 指南 | 操作者 | 路径 |
 | --- | --- | --- |
+| **🌐 [在线站点](https://peroxider.github.io/deepseek-hardness-python-bridge/)** | 浏览项目的任何人 | 由 `.github/workflows/pages.yml` 从 `site/` 部署 |
 | 人类工程师指南 | 坐在终端前的人 | [`docs/guides/human-engineer.zh.md`](docs/guides/human-engineer.zh.md) |
 | Agent 友好型指南 | AI 编码 Agent（使用 `dsh-python-plugin` skill） | [`docs/guides/agent-friendly.zh.md`](docs/guides/agent-friendly.zh.md) |
 | 逐步教程 cookbook | 两者（完整走查） | [`docs/cookbook/adding-a-python-bridge.zh.md`](docs/cookbook/adding-a-python-bridge.zh.md) |

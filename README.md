@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+🌐 **[Live site →](https://peroxider.github.io/deepseek-hardness-python-bridge/)** — discoverability-oriented product pages (hero, decorator reference, architecture diagram, verification, roadmap).
+
 > **Turn Python modules into [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) plugins.**
 >
 > This repository converts existing Python code — ML pipelines, NumPy/SciPy/pandas/PyTorch/scikit-learn algorithms, imaging tools, custom providers — into first-class dsh plugins that the agent harness loads from `cordis.yml`, injects as Cordis services, registers as model-facing tools, and wires into event listeners and capability seams.
@@ -16,6 +18,7 @@ Two usage guides cover the same workflow from different operator perspectives, b
 
 | Guide | Operator | Path |
 | --- | --- | --- |
+| **🌐 [Online site](https://peroxider.github.io/deepseek-hardness-python-bridge/)** | Anyone exploring the project | Deployed via `.github/workflows/pages.yml` from `site/` |
 | Human Engineer Guide | A person at a terminal | [`docs/guides/human-engineer.md`](docs/guides/human-engineer.md) |
 | Agent-friendly Guide | An AI coding agent (uses the `dsh-python-plugin` skill) | [`docs/guides/agent-friendly.md`](docs/guides/agent-friendly.md) |
 | Step-by-step cookbook | Both (full walkthrough) | [`docs/cookbook/adding-a-python-bridge.md`](docs/cookbook/adding-a-python-bridge.md) |
