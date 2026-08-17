@@ -7,11 +7,13 @@
  * Runs, in order:
  *   1. Stub materialization (`scripts/setup-stubs.mjs`)
  *   2. Python test suite (pytest; requires pytest on PATH)
- *   3. Codegen mirror checks (`tests/e2e/codegen-mirror.mjs`)
- *   4. Runtime lifecycle checks (`tests/e2e/runtime-lifecycle.mjs`)
- *   5. Generic-plugin checks (`tests/e2e/generic-plugin.mjs`)
- *   6. Real-child runtime E2E (`tests/e2e/runtime-real-child.mjs`)
- *   7. Generated-package E2E (`tests/e2e/generated-package.mjs`)
+ *   3. Isolated wheel install and import
+ *   4. Codegen source checks
+ *   5. Monorepo runtime, bundle, and CLI unit tests
+ *   6. Integration harness setup
+ *   7. Generated-package real composition
+ *   8. Generic LKB real composition
+ *   9. Strict monorepo bridge typecheck
  *
  * Exits non-zero when any step fails.
  */
@@ -26,6 +28,8 @@ const python = process.env.DSH_E2E_PYTHON ?? 'python3'
 const steps = [
   ['stub materialization', 'node', ['scripts/setup-stubs.mjs']],
   ['python test suite', python, ['-m', 'pytest', 'tests/'], { cwd: join(root, 'python/sdk-dsl'), env: { ...process.env, PYTHONPATH: 'src' } }],
+  ['wheel isolated install and import', python, ['scripts/verify-wheel.py']],
+  ['codegen mirror checks', 'node', ['--experimental-transform-types', 'tests/e2e/codegen-mirror.mjs']],
 ]
 
 let failed = 0
@@ -50,18 +54,24 @@ const monorepo = process.env.DSH_MONOREPO ?? '/home/chad/workspace/deepseek-harn
 const tsc = process.env.DSH_TSC ?? '/tmp/dsh-externals/manual/typescript-6.0.3/package/bin/tsc'
 if (existsSync(join(monorepo, 'vendor/cordis/src/index.ts')) && existsSync(tsc)) {
   const integrationSteps = [
+    ['monorepo bridge release unit tests', 'pnpm', [
+      'exec', 'vitest', 'run',
+      'packages/bridge/python-bridge-runtime/tests/bridge.spec.ts',
+      'packages/bundle/base/tests/base.spec.ts',
+      'apps/cli/tests/python-plugin-install.spec.ts',
+    ], { cwd: monorepo }],
     ['integration harness setup', 'node', ['scripts/setup-integration.mjs']],
-    ['codegen mirror checks', 'node', ['--experimental-transform-types', 'tests/e2e/codegen-mirror.mjs']],
     ['REAL-composition (real Loader + real schemastery + real ToolRuntime)', 'node', ['--experimental-transform-types', 'tests/integration/real-composition.mjs']],
     ['generic LKB composition (no codegen)', 'node', ['--experimental-transform-types', 'tests/integration/generic-plugin.mjs']],
     ['strict typecheck (tsc -b in monorepo)', 'node', ['scripts/typecheck-integration.mjs']],
   ]
-  for (const [name, command, args] of integrationSteps) {
+  for (const [name, command, args, options] of integrationSteps) {
     console.log(`\n=== ${name} ===`)
     const result = spawnSync(command, args, {
       cwd: root,
       stdio: 'inherit',
       env: { ...process.env, NODE_OPTIONS: '--no-warnings' },
+      ...options,
     })
     if (result.status !== 0) {
       failed++

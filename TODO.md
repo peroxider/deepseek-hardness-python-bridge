@@ -68,7 +68,7 @@
       `bridge.notify('event/deliver', {event, payload})`；waterfall 模式 handler 必须 `return next()`
   - `ctx.effect()` 注册拆毁（fiber unload → `bridge.shutdown()`）
 - [x] **验收**：真实 Loader 挂载单行配置即注册 `ctx.lkb` + 4 个工具；严格 `tsc -b` 零错误。
-- [ ] **依赖**：M1.1。
+- [x] **依赖**：M1.1。
 
 ### M1.3 动态注册的 schema 直传
 
@@ -86,7 +86,7 @@
   `ctx.lkb.create_task` → `claim` → `start` → `complete` 全生命周期 +
   4 工具经真实 ToolRuntime 可见可执行 + fiber dispose 拆毁子进程。
 - [x] **验收**：断言全过；与 codegen 路径（`lkb-composition.mjs`）行为等价。
-- [ ] **依赖**：M1.2、M1.3。
+- [x] **依赖**：M1.2、M1.3。
 
 ### M1.5 双路径文档
 

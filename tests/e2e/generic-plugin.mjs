@@ -27,6 +27,7 @@ const bridge = {
     capabilities: [], capabilityMethods: [], promptSections: [], methods: ['greet', 'sample_lookup'],
   },
   call(method, args) { calls.push({ method, args }); return Promise.resolve({ method, args }) },
+  waitUntilReady() { return Promise.resolve(this.bridgeManifest) },
   notify(method, args) { notifications.push({ method, args }) },
   shutdown() { shutdown = true; return Promise.resolve() },
 }
