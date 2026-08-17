@@ -1,8 +1,8 @@
-# @peroxidess/dsh-python-bridge-codegen
+# @peroxider/dsh-python-bridge-codegen
 
 English | [中文](README.zh.md)
 
-AST-based TypeScript generator for the Python Capability Bridge. Reads one or more Python source files, walks `dsh_bridge` decorator calls, and emits a TypeScript bridge package that conforms to [`@peroxidess/dsh-python-bridge-runtime`](../python-bridge-runtime/README.md). The generator never executes user source; it only inspects the source text and emits generated artifacts.
+AST-based TypeScript generator for the Python Capability Bridge. Reads one or more Python source files, walks `dsh_bridge` decorator calls, and emits a TypeScript bridge package that conforms to [`@peroxider/dsh-python-bridge-runtime`](../python-bridge-runtime/README.md). The generator never executes user source; it only inspects the source text and emits generated artifacts.
 
 ## Usage
 
@@ -16,14 +16,14 @@ The CLI prints diagnostics (decoration errors with file/line) to stderr and exit
 
 The generator emits:
 
-- `package.json` — Cordis peer dependency + `@peroxidess/dsh-python-bridge-runtime` runtime dep.
+- `package.json` — Cordis peer dependency + `@peroxider/dsh-python-bridge-runtime` runtime dep.
 - `src/index.ts` — `Service` subclass(es) with `static Config` schemastery schema, `apply()` function for tool consumers / listeners.
 - `src/diagnostics.ts` — when decoration errors are found.
 
 ## Public library
 
 ```ts
-import { generateBridgePackage, parseModuleSources, pythonTypeToTs } from '@peroxidess/dsh-python-bridge-codegen'
+import { generateBridgePackage, parseModuleSources, pythonTypeToTs } from '@peroxider/dsh-python-bridge-codegen'
 
 const parsed = parseModuleSources([
   { path: 'provider.py', contents: sourceText },

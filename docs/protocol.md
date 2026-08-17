@@ -2,7 +2,7 @@
 
 English | [中文](protocol.zh.md)
 
-This document defines the compatibility promise between `@peroxidess/dsh-python-bridge-runtime` and the Python `dsh-bridge` runtime. The transport is newline-delimited JSON-RPC 2.0 over stdio. A protocol version is compatible when its major component matches the peer's major component; a different major is rejected during `initialize` as `protocol-mismatch` (`-32006`).
+This document defines the compatibility promise between `@peroxider/dsh-python-bridge-runtime` and the Python `dsh-bridge` runtime. The transport is newline-delimited JSON-RPC 2.0 over stdio. A protocol version is compatible when its major component matches the peer's major component; a different major is rejected during `initialize` as `protocol-mismatch` (`-32006`).
 
 ## Version handshake
 

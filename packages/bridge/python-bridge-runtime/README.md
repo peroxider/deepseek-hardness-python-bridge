@@ -1,15 +1,15 @@
-# @peroxidess/dsh-python-bridge-runtime
+# @peroxider/dsh-python-bridge-runtime
 
 English | [中文](README.zh.md)
 
 The TypeScript runtime half of the Python Capability Bridge. One Cordis Service Provider (`PythonBridgeService`, registered as `ctx.pythonBridge`) spawns long-lived `python -u -m dsh_bridge.runtime <module>` child processes and forwards decorated method calls through newline-delimited JSON-RPC 2.0 over stdio (reusing [`@deepseek-ai/dsh-sdk-protocol`](../sdk/protocol/README.md) framing). Process lifecycle (graceful shutdown, SIGTERM → SIGKILL ladder) delegates to [`@deepseek-ai/dsh-subprocess`](../subprocess/subprocess/README.md) through `scrubbedParentEnv()` for credential scrubbing.
 
-This package is the runtime; it ships no generated Service classes. Generated Service / Tool / Listener / Capability classes are produced by [`@peroxidess/dsh-python-bridge-codegen`](../python-bridge-codegen/README.md) from a Python module's `dsh_bridge` decorators and depend on this package.
+This package is the runtime; it ships no generated Service classes. Generated Service / Tool / Listener / Capability classes are produced by [`@peroxider/dsh-python-bridge-codegen`](../python-bridge-codegen/README.md) from a Python module's `dsh_bridge` decorators and depend on this package.
 
 ## Wiring
 
 ```ts
-import { PythonBridgeService } from '@peroxidess/dsh-python-bridge-runtime'
+import { PythonBridgeService } from '@peroxider/dsh-python-bridge-runtime'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

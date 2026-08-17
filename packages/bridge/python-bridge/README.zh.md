@@ -1,4 +1,4 @@
-# `@peroxidess/dsh-python-bridge`
+# `@peroxider/dsh-python-bridge`
 
 这个 Cordis 插件无需生成 TypeScript 包即可加载一个带装饰器的 Python 模块。它通过 `ctx.pythonBridge` 启动模块，等待 manifest，注册第一个声明的 service 及其方法，把每个工具连同 manifest JSON Schema 注册到工具运行时，并把声明的事件转发给 Python 子进程。
 
@@ -6,7 +6,7 @@
 
 ```yaml
 - id: my-python-module
-  name: '@peroxidess/dsh-python-bridge'
+  name: '@peroxider/dsh-python-bridge'
   config:
     module: my_package.bridge
     className: MyService
@@ -22,7 +22,7 @@
 
 部署不需要生成的 TypeScript service 签名或逐字段 schemastery 配置时，默认使用本包。模块 manifest 是 service 方法、工具、监听器和 JSON Schema 的运行时来源，因此修改 Python 声明后只需重启子进程。
 
-TypeScript 消费者需要静态类型的 `ctx.<service>` 方法，或者每个 Python dataclass 字段都必须成为独立且带文档的 Cordis 配置字段时，使用 `@peroxidess/dsh-python-bridge-codegen`。两条路径共用相同的 Python 运行时和线协议行为。
+TypeScript 消费者需要静态类型的 `ctx.<service>` 方法，或者每个 Python dataclass 字段都必须成为独立且带文档的 Cordis 配置字段时，使用 `@peroxider/dsh-python-bridge-codegen`。两条路径共用相同的 Python 运行时和线协议行为。
 
 ## 模型体验
 

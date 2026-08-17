@@ -1,4 +1,4 @@
-# `@peroxidess/dsh-python-bridge`
+# `@peroxider/dsh-python-bridge`
 
 This Cordis plugin loads one decorated Python module without generating a TypeScript package. It starts the module through `ctx.pythonBridge`, waits for its manifest, registers the first declared service and its methods, registers every tool with the manifest JSON Schemas, and forwards declared events to the Python child.
 
@@ -6,7 +6,7 @@ This Cordis plugin loads one decorated Python module without generating a TypeSc
 
 ```yaml
 - id: my-python-module
-  name: '@peroxidess/dsh-python-bridge'
+  name: '@peroxider/dsh-python-bridge'
   config:
     module: my_package.bridge
     className: MyService
@@ -22,7 +22,7 @@ This Cordis plugin loads one decorated Python module without generating a TypeSc
 
 Use this package by default when deployment does not require generated TypeScript service signatures or per-field schemastery configuration. The module manifest is the runtime source for service methods, tools, listeners, and JSON Schemas, so changing Python declarations requires only a child restart.
 
-Use `@peroxidess/dsh-python-bridge-codegen` when TypeScript consumers require statically typed `ctx.<service>` methods or when each Python dataclass field must appear as its own documented Cordis config field. Both paths use the same Python runtime and wire behavior.
+Use `@peroxider/dsh-python-bridge-codegen` when TypeScript consumers require statically typed `ctx.<service>` methods or when each Python dataclass field must appear as its own documented Cordis config field. Both paths use the same Python runtime and wire behavior.
 
 ## Model Experience
 

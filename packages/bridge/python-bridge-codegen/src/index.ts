@@ -3,7 +3,7 @@
  *
  * Parses one or more Python source files, walks `dsh_bridge` decorator calls,
  * and emits a TypeScript bridge package conformant to
- * `@peroxidess/dsh-python-bridge-runtime`. The generator never executes user
+ * `@peroxider/dsh-python-bridge-runtime`. The generator never executes user
  * source; it inspects the source text and emits generated artifacts.
  *
  * Two public entry points:
@@ -12,7 +12,7 @@
  * - The `dsh-bridge-codegen` CLI bin — reads sources from disk and writes the
  *   package to a target directory.
  *
- * @module @peroxidess/dsh-python-bridge-codegen
+ * @module @peroxider/dsh-python-bridge-codegen
  */
 
 import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync } from 'node:fs'
@@ -740,7 +740,7 @@ function generatePackageJson(name: string): BridgePackageFile {
       '@deepseek-ai/cordis': 'workspace:^',
     },
     dependencies: {
-      '@peroxidess/dsh-python-bridge-runtime': 'workspace:^',
+      '@peroxider/dsh-python-bridge-runtime': 'workspace:^',
       '@deepseek-ai/dsh-tools': 'workspace:^',
       '@deepseek-ai/dsh-session': 'workspace:^',
       '@deepseek-ai/schemastery': 'workspace:^',
@@ -763,7 +763,7 @@ function generateIndexTs(parsed: ParsedModule, modulePath: string): BridgePackag
     `import z from '@deepseek-ai/schemastery'`,
     ...(needsTools ? [`import { defineTool } from '@deepseek-ai/dsh-tools'`] : []),
     ...(needsTools ? [`import type { JsonValue } from '@deepseek-ai/dsh-session'`] : []),
-    `import { PythonBridgeService, type PythonBridge } from '@peroxidess/dsh-python-bridge-runtime'`,
+    `import { PythonBridgeService, type PythonBridge } from '@peroxider/dsh-python-bridge-runtime'`,
   ]
 
   const sections: string[] = [

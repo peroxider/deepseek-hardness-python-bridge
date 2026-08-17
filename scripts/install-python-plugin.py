@@ -119,7 +119,7 @@ RUNTIME_LINKS = [
 # dsh install does not ship them. Maps package name → source directory.
 def bundled_packages(monorepo: Path) -> dict[str, Path]:
     return {
-        "@peroxidess/dsh-python-bridge-runtime": REPO_ROOT / "packages/bridge/python-bridge-runtime",
+        "@peroxider/dsh-python-bridge-runtime": REPO_ROOT / "packages/bridge/python-bridge-runtime",
         "@deepseek-ai/dsh-sdk-protocol": monorepo / "packages/sdk/protocol",
     }
 
@@ -542,7 +542,7 @@ def step_patch(ctx: InstallContext) -> None:
     new_entries = [
         {
             "id": "python-bridge",
-            "name": _file_uri(ctx.plugin_dir / "node_modules/@peroxidess/dsh-python-bridge-runtime/lib/index.js"),
+            "name": _file_uri(ctx.plugin_dir / "node_modules/@peroxider/dsh-python-bridge-runtime/lib/index.js"),
         },
         {"id": ctx.entry_id, "name": _file_uri(ctx.plugin_pkg / "lib/index.js"), "config": config},
     ]

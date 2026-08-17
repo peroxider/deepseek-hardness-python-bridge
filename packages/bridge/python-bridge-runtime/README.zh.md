@@ -1,15 +1,15 @@
-# @peroxidess/dsh-python-bridge-runtime
+# @peroxider/dsh-python-bridge-runtime
 
 [English](README.md) | 中文
 
 Python Capability Bridge 的 TypeScript 运行时半边。一个 Cordis Service Provider（`PythonBridgeService`，注册为 `ctx.pythonBridge`）负责派生长生命周期的 `python -u -m dsh_bridge.runtime <module>` 子进程，并通过 stdio 上的换行符分隔 JSON-RPC 2.0 协议转发装饰过的方法调用（复用 [`@deepseek-ai/dsh-sdk-protocol`](../sdk/protocol/README.md) 的帧格式）。进程生命周期（优雅关闭、SIGTERM → SIGKILL 升级链）通过 `scrubbedParentEnv()` 委托给 [`@deepseek-ai/dsh-subprocess`](../subprocess/subprocess/README.md) 做凭据清洗。
 
-本包仅提供运行时，不包含任何生成的 Service 类。Service / Tool / Listener / Capability 类由 [`@peroxidess/dsh-python-bridge-codegen`](../python-bridge-codegen/README.md) 从 Python 模块的 `dsh_bridge` 装饰器生成，并依赖本包。
+本包仅提供运行时，不包含任何生成的 Service 类。Service / Tool / Listener / Capability 类由 [`@peroxider/dsh-python-bridge-codegen`](../python-bridge-codegen/README.md) 从 Python 模块的 `dsh_bridge` 装饰器生成，并依赖本包。
 
 ## 接线
 
 ```ts
-import { PythonBridgeService } from '@peroxidess/dsh-python-bridge-runtime'
+import { PythonBridgeService } from '@peroxider/dsh-python-bridge-runtime'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

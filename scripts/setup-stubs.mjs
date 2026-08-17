@@ -28,8 +28,8 @@ const STUBS = [
   ['@deepseek-ai/dsh-invariants', 'invariants.mjs'],
   ['@deepseek-ai/schemastery', 'schemastery.mjs'],
   ['@deepseek-ai/dsh-tools', 'tools.mjs'],
-  ['@peroxidess/dsh-python-bridge-runtime', null], // self-link for generated-package imports
-  ['@peroxidess/dsh-python-bridge', null],
+  ['@peroxider/dsh-python-bridge-runtime', null], // self-link for generated-package imports
+  ['@peroxider/dsh-python-bridge', null],
 ]
 
 for (const [name, file] of STUBS) {
@@ -38,7 +38,7 @@ for (const [name, file] of STUBS) {
   let target
   if (file === null) {
     // Self-link so generated bridge packages can import the runtime source.
-    const packageDir = name === '@peroxidess/dsh-python-bridge'
+    const packageDir = name === '@peroxider/dsh-python-bridge'
       ? 'python-bridge'
       : 'python-bridge-runtime'
     const href = pathToFileURL(join(root, 'packages/bridge', packageDir, 'src/index.ts')).href

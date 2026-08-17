@@ -66,12 +66,12 @@ python/sdk-dsl/                          dsh-python-bridge PyPI package: decorat
   src/dsh_bridge/_errors.py                exception → JSON-RPC code/kind vocabulary
   tests/                                   pytest: unit + real-subprocess integration (49 tests)
 packages/bridge/
-  python-bridge-runtime/                 @peroxidess/dsh-python-bridge-runtime
+  python-bridge-runtime/                 @peroxider/dsh-python-bridge-runtime
     src/index.ts                           PythonBridgeService (ctx.pythonBridge) + PythonBridge client
     tests/                                 vitest: transport, error mapping, reconnect
-  python-bridge/                        @peroxidess/dsh-python-bridge
+  python-bridge/                        @peroxider/dsh-python-bridge
     src/index.ts                           Generic manifest-driven plugin (PythonModulePlugin)
-  python-bridge-codegen/                 @peroxidess/dsh-python-bridge-codegen
+  python-bridge-codegen/                 @peroxider/dsh-python-bridge-codegen
     src/index.ts                           AST-driven TS generator (parseModuleSources / generateBridgePackage)
     bin/dsh-bridge-codegen.js              CLI entry point
     tests/                                 vitest: parser, type projection, emitter
@@ -93,7 +93,7 @@ The same decorated module loads two ways — the **generic plugin** is the defau
 
 | | Generic plugin (default) | Codegen (advanced) |
 | --- | --- | --- |
-| Package | `@peroxidess/dsh-python-bridge` | `@peroxidess/dsh-python-bridge-codegen` |
+| Package | `@peroxider/dsh-python-bridge` | `@peroxider/dsh-python-bridge-codegen` |
 | Build | none — one `cordis.yml` entry | generated TS package, then `tsc` |
 | Types | dynamic — surfaces registered from the runtime manifest | static — per-module TS interfaces + schemastery Config |
 | Config | `module` + `initArgs` + generic keys (`pythonBin`, `sandbox`, `pythonPath`, …) | per-module camelCase keys mapped from dataclass fields |
@@ -106,11 +106,11 @@ Start with the generic plugin; reach for codegen when you want static per-module
 
 ### 0. Generic quick start (zero-build)
 
-When the composition loads `@peroxidess/dsh-python-bridge-runtime`, one `cordis.yml` entry is the entire integration — no codegen, no build. Both packages ship as dependencies of the `@deepseek-ai/dsh-base` bundle, so a fresh dsh installation resolves these bare names without extra install steps:
+When the composition loads `@peroxider/dsh-python-bridge-runtime`, one `cordis.yml` entry is the entire integration — no codegen, no build. Both packages ship as dependencies of the `@deepseek-ai/dsh-base` bundle, so a fresh dsh installation resolves these bare names without extra install steps:
 
 ```yaml
 - id: lkb
-  name: '@peroxidess/dsh-python-bridge'
+  name: '@peroxider/dsh-python-bridge'
   config:
     pythonBin: python3
     module: lkb_dsh.bridge

@@ -80,8 +80,8 @@ const REAL_PACKAGES = {
   '@deepseek-ai/dsh-session': `${monorepo}/packages/core/session/src/index.ts`,
   '@deepseek-ai/dsh-timeout': `${monorepo}/packages/util/timeout/src/index.ts`,
   '@deepseek-ai/dsh-invariants': `${monorepo}/packages/runtime-diagnostics/invariants/src/index.ts`,
-  '@peroxidess/dsh-python-bridge-runtime': `${root}/packages/bridge/python-bridge-runtime/src/index.ts`,
-  '@peroxidess/dsh-python-bridge': `${root}/packages/bridge/python-bridge/src/index.ts`,
+  '@peroxider/dsh-python-bridge-runtime': `${root}/packages/bridge/python-bridge-runtime/src/index.ts`,
+  '@peroxider/dsh-python-bridge': `${root}/packages/bridge/python-bridge/src/index.ts`,
 }
 
 /** Packages whose default export the wrappers must re-export. */
@@ -93,8 +93,8 @@ const HAS_DEFAULT = new Set([
   '@deepseek-ai/dsh-subprocess',
   '@deepseek-ai/dsh-tools',
   '@deepseek-ai/dsh-system-prompt',
-  '@peroxidess/dsh-python-bridge-runtime',
-  '@peroxidess/dsh-python-bridge',
+  '@peroxider/dsh-python-bridge-runtime',
+  '@peroxider/dsh-python-bridge',
 ])
 
 /** Type-only peers of the closure: value imports never reach these. */

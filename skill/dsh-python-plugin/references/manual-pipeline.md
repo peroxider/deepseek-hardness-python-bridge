@@ -4,14 +4,14 @@ Use when `scripts/install-python-plugin.py` cannot run (missing tsc, missing dsh
 
 ## 0. Generic path (zero-build, default)
 
-When the dsh install can resolve `@peroxidess/dsh-python-bridge` and the runtime (source launch, or an install that ships them), the pipeline collapses to one `cordis.patch.yml` entry — no codegen, no build:
+When the dsh install can resolve `@peroxider/dsh-python-bridge` and the runtime (source launch, or an install that ships them), the pipeline collapses to one `cordis.patch.yml` entry — no codegen, no build:
 
 ```yaml
 - insert:
   - id: python-bridge
-    name: '@peroxidess/dsh-python-bridge-runtime'
+    name: '@peroxider/dsh-python-bridge-runtime'
   - id: <short>
-    name: '@peroxidess/dsh-python-bridge'
+    name: '@peroxider/dsh-python-bridge'
     config:
       pythonBin: python3
       module: <pkg>_dsh.bridge
@@ -74,7 +74,7 @@ Append an insert entry to `~/.dsh/profiles/<profile>/cordis.patch.yml` (a YAML a
 ```yaml
 - insert:
   - id: python-bridge
-    name: 'file://<plugin>/node_modules/@peroxidess/dsh-python-bridge-runtime/lib/index.js'
+    name: 'file://<plugin>/node_modules/@peroxider/dsh-python-bridge-runtime/lib/index.js'
   - id: <short>
     name: 'file://<plugin>/<short>-bridge/lib/index.js'
     config:

@@ -1,6 +1,6 @@
 {
-  "name": "@peroxidess/dsh-python-bridge-codegen",
-  "description": "AST-based TypeScript generator for the Python Capability Bridge. Parses Python sources, walks `dsh_bridge` decorators, and emits a TypeScript bridge package conformant to `@peroxidess/dsh-python-bridge-runtime`.",
+  "name": "@peroxider/dsh-python-bridge-codegen",
+  "description": "AST-based TypeScript generator for the Python Capability Bridge. Parses Python sources, walks `dsh_bridge` decorators, and emits a TypeScript bridge package conformant to `@peroxider/dsh-python-bridge-runtime`.",
   "version": "0.0.1",
   "publishConfig": {
     "access": "public"

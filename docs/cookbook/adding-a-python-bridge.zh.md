@@ -20,7 +20,7 @@
 
 ```yaml
 - id: ml
-  name: '@peroxidess/dsh-python-bridge'
+  name: '@peroxider/dsh-python-bridge'
   config:
     pythonBin: python
     module: my_ml.provider
@@ -33,7 +33,7 @@
 
 | | 通用插件 | codegen |
 | --- | --- | --- |
-| 包 | `@peroxidess/dsh-python-bridge` | 你生成的包 |
+| 包 | `@peroxider/dsh-python-bridge` | 你生成的包 |
 | 构建 | 无 | `pnpm dsh-bridge-codegen` + `tsc` |
 | 配置 | `module` + `initArgs` + 通用键 | camelCase dataclass 字段键 |
 | 类型 | 动态（运行时 manifest） | 静态 per-module TS |
@@ -134,7 +134,7 @@ PYTHONPATH=src:examples/python-bridge-ml:python/sdk-dsl/src \
 ```ts
 // auto-generated python-bridge-ml/src/index.ts
 import { Context, Service, z } from '@deepseek-ai/cordis'
-import { PythonBridgeService, type PythonBridge } from '@peroxidess/dsh-python-bridge-runtime'
+import { PythonBridgeService, type PythonBridge } from '@peroxider/dsh-python-bridge-runtime'
 
 declare module '@deepseek-ai/cordis' {
   interface Context { pythonBridge: PythonBridgeService }

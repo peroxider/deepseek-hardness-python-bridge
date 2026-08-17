@@ -1,12 +1,12 @@
 /**
- * Invariant companion for `@peroxidess/dsh-python-bridge`.
- * @module @peroxidess/dsh-python-bridge/invariant
+ * Invariant companion for `@peroxider/dsh-python-bridge`.
+ * @module @peroxider/dsh-python-bridge/invariant
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@peroxidess/dsh-python-bridge'
+const PACKAGE_NAME = '@peroxider/dsh-python-bridge'
 
 /** Cordis companion plugin name. */
 export const name = 'python-bridge-invariant'

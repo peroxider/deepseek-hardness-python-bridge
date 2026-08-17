@@ -76,7 +76,7 @@ def service(name: str, settings_namespace: str | None = None):
     """Class decorator: marks a class as a `ctx.<name>` Service Provider.
 
     The decorator records a ServiceMetadata entry on the global bridge registry
-    and returns the class unchanged. Codegen (`@peroxidess/dsh-python-bridge-codegen`)
+    and returns the class unchanged. Codegen (`@peroxider/dsh-python-bridge-codegen`)
     reads the registry to emit a TypeScript bridge package whose `Service`
     subclass forwards calls to a long-lived Python child process.
 
