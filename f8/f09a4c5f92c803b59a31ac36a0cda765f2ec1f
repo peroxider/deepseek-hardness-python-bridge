@@ -1,0 +1,76 @@
+tests/e2e/runtime-lifecycle.mjs
+  s_86aed8fa1ab2c3::t_b8ed1430517aa7 227
+  s_86aed8fa1ab2c3::t_60a98a9a1d516d 120
+  s_86aed8fa1ab2c3::t_a41ba50465544a 88,104,134
+  s_86aed8fa1ab2c3::t_fa9d046eee457f 263-281
+  s_86aed8fa1ab2c3::t_0aadba874e1073 180
+  s_86aed8fa1ab2c3::t_9b40aac9f927ef 250
+  s_86aed8fa1ab2c3::t_fe6994cbf53bb7 152,211
+docs/cookbook/adding-a-python-bridge.zh.md
+  s_86aed8fa1ab2c3::t_6c7b7798b15254 204-205,211
+skill/dsh-python-plugin/references/pitfalls.md
+  s_86aed8fa1ab2c3::t_535726965620b4 56-61
+packages/bridge/python-bridge-runtime/src/index.ts
+  s_86aed8fa1ab2c3::t_c83d5e686cbbf8 281-291
+  s_86aed8fa1ab2c3::t_2918ae4a20d53e 18
+  s_86aed8fa1ab2c3::t_8bcd0df54381ec 200-201
+  s_86aed8fa1ab2c3::t_4587f93b2b6af6 454,458-460,464-475
+  s_86aed8fa1ab2c3::t_2691ec1e5bc72d 518-549
+  s_86aed8fa1ab2c3::t_b57e4d9dd1b7ad 461-463
+  s_86aed8fa1ab2c3::t_f9e2aeef39ffd1 476
+packages/bridge/python-bridge-runtime/README.zh.md
+  s_86aed8fa1ab2c3::t_dbc32f1a2e89ef 31-34
+  s_86aed8fa1ab2c3::t_d9938c4be11154 62
+packages/bridge/python-bridge-runtime/README.md
+  s_86aed8fa1ab2c3::t_354bf2fae83cc5 62
+  s_86aed8fa1ab2c3::t_6a4ab37f07b47b 31-32,34
+  s_86aed8fa1ab2c3::t_29397a2701156f 33
+site/decorators.html
+  s_86aed8fa1ab2c3::t_cb36d211bcb278 145
+docs/cookbook/adding-a-python-bridge.md
+  s_86aed8fa1ab2c3::t_7467ef2e6ce588 204-205,211
+README.md
+  s_86aed8fa1ab2c3::t_0564fcc6abada5 217
+TODO.md
+  s_86aed8fa1ab2c3::t_adfcd7adf3879d 123,125
+  s_86aed8fa1ab2c3::t_43794aba877209 130,132
+README.zh.md
+  s_86aed8fa1ab2c3::t_843436c404b41a 217
+packages/bridge/python-bridge-runtime/tests/bridge.spec.ts
+  s_86aed8fa1ab2c3::t_c8b33f923a38ee 332-380
+  s_86aed8fa1ab2c3::t_ca3763aa1b8d66 319
+  s_86aed8fa1ab2c3::t_5a42bb89993144 256
+  s_86aed8fa1ab2c3::t_22ed47ee10815f 270
+  s_86aed8fa1ab2c3::t_3ae9a4cd2dec61 238
+  s_86aed8fa1ab2c3::t_afa231054e64de 292
+  s_86aed8fa1ab2c3::t_84377a8b744353 224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "f8f09a4c5f92c803b59a31ac36a0cda765f2ec1f",
+  "prompts": {},
+  "sessions": {
+    "s_86aed8fa1ab2c3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fbdfd67cc072c849c6638",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "edit_kind": "file_edit",
+        "source_scene": "agent",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "client_type": "ide",
+        "tool_use_id": "6a828ac067cc072c849cbee3",
+        "dedupe_key": "6a7fbdfd67cc072c849c6638:6a828ac067cc072c849cbee3:afterEdit:18e5262c",
+        "operation_id": "6a828ac067cc072c849cbee3",
+        "external_session_id": "6a7fbdfd67cc072c849c6638",
+        "tool_type": "builtin",
+        "runtime_client": "trae-tob-git-ai",
+        "session_id": "6a7fbdfd67cc072c849c6638"
+      }
+    }
+  }
+}
