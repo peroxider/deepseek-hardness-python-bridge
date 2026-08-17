@@ -1,0 +1,19 @@
+tests/integration/lkb-composition.mjs
+  s_11de2233c80156::t_5350b67c8ae43a 90,93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "ffd5ee1169962516ee170225698ce6a1a73a41e8",
+  "prompts": {},
+  "sessions": {
+    "s_11de2233c80156": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7de4c6513ef57dfc7eef00",
+        "model": "deepseek_v4_flash_official__max"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>"
+    }
+  }
+}
