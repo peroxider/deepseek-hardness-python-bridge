@@ -14,6 +14,30 @@
 - 已 `pnpm install` 的 `deepseek-harness` 工作区。
 - `pythonBin` 指向正确的解释器。
 
+## 通用插件 vs. codegen：选择你的路径
+
+同一个装饰器模块有两种挂载方式。**先试通用插件**——它无需构建、无需 codegen：
+
+```yaml
+- id: ml
+  name: '@deepseek-ai/dsh-python-bridge'
+  config:
+    pythonBin: python
+    module: my_ml.provider
+    className: MLProvider
+```
+
+`initialize` 时通用插件读取运行时 manifest，用装饰器声明的 schema 注册 service、工具与监听器——零 codegen、零 `tsc`。工具 `outputSchema` 与 `parameters` 原样透传；缺少 `additionalProperties` 的 object schema 默认补 `false`（dsh-tools 编译器要求显式声明）。
+
+本指南其余部分走 **codegen** 路径，它产出一个自包含的 TypeScript 包：静态的 per-module 方法类型、由 dataclass 字段映射出的 camelCase Config 键、以及生成式 `static Config` 校验。当你需要可构建的包（例如无法加载 `.ts` 源码的构建版 dsh 安装）或类型化的 TS 表面时再选择它。
+
+| | 通用插件 | codegen |
+| --- | --- | --- |
+| 包 | `@deepseek-ai/dsh-python-bridge` | 你生成的包 |
+| 构建 | 无 | `pnpm dsh-bridge-codegen` + `tsc` |
+| 配置 | `module` + `initArgs` + 通用键 | camelCase dataclass 字段键 |
+| 类型 | 动态（运行时 manifest） | 静态 per-module TS |
+
 ## 1. 编写 Python 模块
 
 通过装饰类把它暴露为 Cordis Service Provider：

@@ -38,13 +38,13 @@ Full install (all steps):
       --source /path/to/bridge.py \
       --name '@my-org/lkb-bridge' \
       --module lkb_dsh.bridge \
-      --python-src /path/to/python/src \
+      --python-path /path/to/python/src \
       --config-json '{"boardId": "my-board"}'
 
 Only regenerate the TS package and rebuild JS (leave the profile alone):
 
     scripts/install-python-plugin.py --source ... --name ... --module ... \
-      --python-src ... --steps codegen,build
+      --python-path ... --steps codegen,build
 
 Re-apply the patch after editing ``--config-json`` (no rebuild):
 
@@ -444,9 +444,10 @@ def _link_or_copy(source: Path, link: Path) -> str:
 def step_assemble(ctx: InstallContext) -> None:
     """Lay out the self-contained plugin directory.
 
-    Copies the Python source packages to the plugin root (the child process
-    resolves modules from its cwd) and links the runtime dependency closure
-    from the dsh install into ``node_modules/@deepseek-ai/``.
+    Copies the bridge SDK to the plugin root and links the runtime dependency
+    closure from the dsh install into ``node_modules/@deepseek-ai/``. Business
+    packages stay at their configured ``--python-path`` roots unless the
+    compatibility flag ``--copy-python-src`` is present.
     """
     modules_dir = ctx.plugin_dir / "node_modules/@deepseek-ai"
     modules_dir.mkdir(parents=True, exist_ok=True)
@@ -463,7 +464,9 @@ def step_assemble(ctx: InstallContext) -> None:
     note = f"  {linked} deps linked, {copied} copied from {ctx.dsh_install}"
     print(note)
 
-    python_roots = [REPO_ROOT / "python/sdk-dsl/src", *[Path(d) for d in ctx.args.python_src]]
+    python_roots = [REPO_ROOT / "python/sdk-dsl/src"]
+    if ctx.args.copy_python_src:
+        python_roots.extend(Path(d) for d in ctx.args.python_path)
     for src_root in python_roots:
         if not src_root.is_dir():
             raise InstallError(f"python src dir not found: {src_root}")
@@ -481,10 +484,17 @@ def step_assemble(ctx: InstallContext) -> None:
 
 
 def step_smoke(ctx: InstallContext) -> None:
-    """Import the Python module inside the assembled plugin directory."""
+    """Import the Python module with the configured import roots."""
+    env = os.environ.copy()
+    configured = [str(Path(path).resolve()) for path in ctx.args.python_path]
+    if configured:
+        env["PYTHONPATH"] = os.pathsep.join(
+            [*configured, *([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])]
+        )
     result = subprocess.run(
         [ctx.python, "-c", f"import {ctx.args.module}"],
         cwd=ctx.plugin_dir,
+        env=env,
         capture_output=True,
         text=True,
     )
@@ -492,7 +502,7 @@ def step_smoke(ctx: InstallContext) -> None:
         print(result.stderr, file=sys.stderr)
         raise InstallError(
             f"python module {ctx.args.module} does not import inside {ctx.plugin_dir} "
-            "(missing --python-src?)"
+            "(missing --python-path?)"
         )
     print(f"  import {ctx.args.module} ok")
 
@@ -526,6 +536,7 @@ def step_patch(ctx: InstallContext) -> None:
         "pythonBin": ctx.python,
         "module": ctx.args.module,
         "cwd": str(ctx.plugin_dir),
+        "pythonPath": [str(Path(path).resolve()) for path in ctx.args.python_path],
         **json.loads(ctx.args.config_json),
     }
     new_entries = [
@@ -620,11 +631,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--name", required=True, help="Generated package name, e.g. @my-org/lkb-bridge.")
     parser.add_argument("--module", required=True, help="Python module path, e.g. lkb_dsh.bridge.")
     parser.add_argument(
-        "--python-src",
+        "--python-path",
         action="append",
         default=[],
-        help="Directory holding the Python packages the module imports (repeatable). "
-        "Each top-level package inside is copied into the plugin root.",
+        help="Import root prepended to the child PYTHONPATH (repeatable).",
+    )
+    parser.add_argument(
+        "--copy-python-src",
+        action="store_true",
+        help="Compatibility mode: copy top-level packages from --python-path roots into the plugin directory.",
     )
     parser.add_argument("--plugin-dir", default=None, help="Plugin directory (default: $DSH_HOME/plugins/<short-name>).")
     parser.add_argument("--id", default=None, help="Loader entry id (default: package short name minus '-bridge').")

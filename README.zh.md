@@ -44,9 +44,9 @@ DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python �
 本仓库的前提由四层验证支撑，均可通过 `node scripts/verify.mjs` 离线复现：
 
 1. **Python 套件** —— 43 个 pytest，覆盖装饰器、PEP 484 类型推断、JSON-RPC 运行时，以及真实子进程 stdio 集成。
-2. **离线 TypeScript E2E** —— 纯 Node 断言（无需安装依赖），覆盖 codegen 发射（55+ 断言）、运行时生命周期（worker-exit、重连、关停阶梯、环境清洗）、真实 `python3` 子进程往返，以及挂载在 stub Cordis context 上的生成包。
-3. **REAL-composition** —— 测试用 `cordis.yml` 经真实 vendored Cordis Loader（`vendor/loader` + `vendor/include`）启动：真实 schemastery 应用生成的 `static Config`，真实 `ToolRuntime` 持有注册的工具，真实 `ctx.emit('session/event')` 到达 Python 监听器，`ctx.fiber.dispose()` 通过 effect disposer 拆毁子进程。
-4. **严格类型检查** —— `tsc -b`（typescript 6.0.3，monorepo `tsconfig.base.json` 标志：`strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`）覆盖两个 bridge 包和生成的示例包，在 monorepo project-reference 图中零错误。
+2. **离线 TypeScript E2E** —— 纯 Node 断言（无需安装依赖），覆盖 codegen 发射（55+ 断言）、运行时生命周期（worker-exit、重连、关停阶梯、环境清洗）、真实 `python3` 子进程往返、挂载在 stub Cordis context 上的通用插件，以及挂载在相同 stub 上的生成包。
+3. **REAL-composition** —— 测试用 `cordis.yml` 经真实 vendored Cordis Loader（`vendor/loader` + `vendor/include`）启动：真实 schemastery 应用生成的 `static Config`，真实 `ToolRuntime` 持有注册的工具，真实 `ctx.emit('session/event')` 到达 Python 监听器，`ctx.fiber.dispose()` 通过 effect disposer 拆毁子进程。通用插件与 codegen 两条路径都驱动同一个外部 LKB 示例经真实 ToolRuntime 端到端跑通。
+4. **严格类型检查** —— `tsc -b`（typescript 6.0.3，monorepo `tsconfig.base.json` 标志：`strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`）覆盖三个 bridge 包和生成的示例包，在 monorepo project-reference 图中零错误。
 
 如实陈述的剩余限制：
 
@@ -68,6 +68,8 @@ packages/bridge/
   python-bridge-runtime/                 @deepseek-ai/dsh-python-bridge-runtime
     src/index.ts                           PythonBridgeService（ctx.pythonBridge）+ PythonBridge 客户端
     tests/                                 vitest：传输、错误映射、重连
+  python-bridge/                        @deepseek-ai/dsh-python-bridge
+    src/index.ts                           通用 manifest 驱动插件（PythonModulePlugin）
   python-bridge-codegen/                 @deepseek-ai/dsh-python-bridge-codegen
     src/index.ts                           基于 AST 的 TS 生成器（parseModuleSources / generateBridgePackage）
     bin/dsh-bridge-codegen.js              CLI 入口
@@ -84,9 +86,39 @@ scripts/verify.mjs                       一键离线验证
 .agents/notes/implemented/feature/       记录已交付设计的 Agent Note
 ```
 
+## 通用插件 vs. codegen
+
+同一个装饰器模块有两种加载方式——**通用插件**是默认路径，无需构建；**codegen** 是面向静态类型的高级路径：
+
+| | 通用插件（默认） | codegen（高级） |
+| --- | --- | --- |
+| 包 | `@deepseek-ai/dsh-python-bridge` | `@deepseek-ai/dsh-python-bridge-codegen` |
+| 构建 | 无——一行 `cordis.yml` 条目 | 生成 TS 包，再 `tsc` 构建 |
+| 类型 | 动态——表面在运行时按 manifest 注册 | 静态——per-module TS 接口 + schemastery Config |
+| 配置 | `module` + `initArgs` + 通用键（`pythonBin`、`sandbox`、`pythonPath` 等） | 由 dataclass 字段映射出的 per-module camelCase 键 |
+| 工具 schema | 运行时原样应用装饰器里的 JSON Schema | 相同 schema 被发射进 `defineTool(...)` |
+| 适用 | 零构建集成、Python-first 模块、快速迭代 | 需要类型化 TS 表面与生成式配置校验的团队 |
+
+先上通用插件；需要静态 per-module 类型与可构建的包时再转向 codegen。
+
 ## 快速开始
 
-从 Python 代码库到被加载的 dsh 插件，只需三步：
+### 0. 通用插件快速开始（零构建）
+
+当组合加载了 `@deepseek-ai/dsh-python-bridge-runtime` 时，一行 `cordis.yml` 条目就是完整集成——无需 codegen、无需构建：
+
+```yaml
+- id: lkb
+  name: '@deepseek-ai/dsh-python-bridge'
+  config:
+    pythonBin: python3
+    module: lkb_dsh.bridge
+    pythonPath: [/path/to/lkb/src]
+    initArgs:
+      board_id: main
+```
+
+`initialize` 时通用插件读取 Python 运行时上报的 manifest，注册被装饰的 service（`ctx.lkb`）、每个 `@tool` 与每个 listener——工具 schema 原样取自装饰器。下文 codegen 步骤仍是无法加载 `.ts` 源码的部署获得可构建、自包含包的路径。
 
 ### 1. 编写 Python 模块
 

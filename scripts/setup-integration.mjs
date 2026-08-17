@@ -11,6 +11,14 @@
  * packages. Only two externals are needed and both resolve offline:
  * `@standard-schema/spec` (pnpm store) and `js-yaml` (any local install).
  *
+ * A `pnpm install` in the monorepo creates workspace symlinks
+ * (`vendor/<pkg>/node_modules/@deepseek-ai/<dep>`, `packages/<group>/<pkg>/node_modules/@deepseek-ai/<dep>`)
+ * pointing at the vendored/workspace dirs whose package.json `main` is the
+ * unbuilt `lib/`. Those shadow the root wrappers and break every bare import
+ * from a real source, so this script first unshadows them (removes any such
+ * symlink for a REAL_PACKAGES name) and lets Node's upward walk reach the
+ * wrappers at `$DSH_MONOREPO/node_modules`.
+ *
  * Wrappers are written to three resolution roots:
  *   1. `.gen/integration/node_modules` — app code + explicit test imports
  *   2. `$DSH_MONOREPO/node_modules` — real monorepo sources import each other
@@ -27,7 +35,7 @@
  *   DSH_JS_YAML         - absolute path of a js-yaml install
  *   DSH_STANDARD_SCHEMA - absolute path of an @standard-schema/spec install
  */
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -37,6 +45,8 @@ const jsYaml = process.env.DSH_JS_YAML
   ?? '/home/chad/.npm-global/lib/node_modules/@deepseek-ai/dsh/node_modules/js-yaml'
 const standardSchema = process.env.DSH_STANDARD_SCHEMA
   ?? '/tmp/dsh-externals/node_modules/@standard-schema/spec'
+const zod = process.env.DSH_ZOD
+  ?? '/home/chad/.npm-global/lib/node_modules/@deepseek-ai/dsh/node_modules/zod'
 const out = join(root, '.gen/integration')
 
 if (!existsSync(join(monorepo, 'vendor/cordis/src/index.ts'))) {
@@ -71,6 +81,7 @@ const REAL_PACKAGES = {
   '@deepseek-ai/dsh-timeout': `${monorepo}/packages/util/timeout/src/index.ts`,
   '@deepseek-ai/dsh-invariants': `${monorepo}/packages/runtime-diagnostics/invariants/src/index.ts`,
   '@deepseek-ai/dsh-python-bridge-runtime': `${root}/packages/bridge/python-bridge-runtime/src/index.ts`,
+  '@deepseek-ai/dsh-python-bridge': `${root}/packages/bridge/python-bridge/src/index.ts`,
 }
 
 /** Packages whose default export the wrappers must re-export. */
@@ -83,6 +94,7 @@ const HAS_DEFAULT = new Set([
   '@deepseek-ai/dsh-tools',
   '@deepseek-ai/dsh-system-prompt',
   '@deepseek-ai/dsh-python-bridge-runtime',
+  '@deepseek-ai/dsh-python-bridge',
 ])
 
 /** Type-only peers of the closure: value imports never reach these. */
@@ -95,6 +107,46 @@ const TYPE_ONLY_STUBS = [
   '@deepseek-ai/dsh-user-approval',
   '@deepseek-ai/dsh-subagent',
 ]
+
+/**
+ * Remove pnpm workspace symlinks that would shadow the root wrappers.
+ * A `pnpm install` in the monorepo creates `node_modules/@deepseek-ai/<name>`
+ * symlinks under every workspace package; those point at the vendored/workspace
+ * dirs whose package.json `main` is the unbuilt `lib/`. Deleting every such
+ * symlink for a REAL_PACKAGES name under the `vendor/` and `packages/` trees
+ * lets Node's upward walk resolve those bare imports to the wrappers written
+ * at `$DSH_MONOREPO/node_modules`.
+ */
+function unshadowMonorepo(monorepo) {
+  let removed = 0
+  const visit = (dir) => {
+    let entries
+    try {
+      entries = readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    const nm = join(dir, 'node_modules', '@deepseek-ai')
+    if (existsSync(nm)) {
+      for (const name of readdirSync(nm)) {
+        const scoped = `@deepseek-ai/${name}`
+        if (scoped in REAL_PACKAGES) {
+          rmSync(join(nm, name), { recursive: true, force: true })
+          removed++
+        }
+      }
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name === 'node_modules' || entry.name === '.git') continue
+      visit(join(dir, entry.name))
+    }
+  }
+  for (const area of ['vendor', 'packages']) {
+    const tree = join(monorepo, area)
+    if (existsSync(tree)) visit(tree)
+  }
+  if (removed > 0) console.log(`unshadowed ${removed} pnpm workspace symlink(s) under ${monorepo}/vendor, /packages`)
+}
 
 function writeWrapper(baseModules, name, targetEntry) {
   const dir = join(baseModules, name)
@@ -145,8 +197,13 @@ function populateNodeModules(baseModules) {
     writeFileSync(join(dir, 'index.mjs'), 'export {}\n')
   }
   writeExternalLink(baseModules, '@standard-schema/spec', standardSchema)
+  writeExternalLink(baseModules, 'zod', zod)
   writeExternalLink(baseModules, 'js-yaml', jsYaml)
 }
+
+// Neutralize pnpm workspace symlinks before writing wrappers, so real sources
+// resolve their bare imports to the root wrappers (see unshadowMonorepo).
+unshadowMonorepo(monorepo)
 
 // 1. The harness root: app code and explicit test imports resolve here.
 populateNodeModules(join(out, 'node_modules'))
@@ -156,7 +213,7 @@ populateNodeModules(join(monorepo, 'node_modules'))
 
 // 3. The bridge repo's own packages: their bare imports must hit the REAL
 //    wrappers during integration runs, not the offline stubs at repo root.
-for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen']) {
+for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen', 'python-bridge']) {
   const link = join(root, 'packages/bridge', pkg, 'node_modules')
   rmSync(link, { recursive: true, force: true })
   symlinkSync(join(out, 'node_modules'), link, 'dir')

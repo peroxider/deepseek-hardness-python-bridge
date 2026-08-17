@@ -9,6 +9,7 @@
  */
 import { PassThrough } from 'node:stream'
 import { resolve } from 'node:path'
+import { delimiter } from 'node:path'
 import {
   JsonRpcLineTransport,
   JsonRpcResponseError,
@@ -166,21 +167,27 @@ const ctx = new Context({})
 
 // 7. env scrub: no DSH_* or credential-shaped names reach the child env.
 {
+  const previousPythonPath = process.env.PYTHONPATH
   process.env.DSH_TEST_LEAK = 'leak'
   process.env.MY_API_KEY = 'secret'
+  process.env.PYTHONPATH = ['inherited', 'packages'].join(delimiter)
   const service = new PythonBridgeService(ctx)
   let envSeen = null
   const child = new FakeChild()
   withInitialize(child)
   service.spawn(
-    { module: 'm', reconnect: { enabled: false } },
+    { module: 'm', pythonPath: ['configured', 'source'], reconnect: { enabled: false } },
     { spawnFn: (_argv, opts) => { envSeen = opts.env; return child } },
   )
   assert(envSeen && !('DSH_TEST_LEAK' in envSeen), 'DSH_* names scrubbed')
   assert(envSeen && !('MY_API_KEY' in envSeen), 'credential-shaped names scrubbed')
   assert(envSeen && envSeen.PYTHONUNBUFFERED === '1', 'PYTHONUNBUFFERED set')
+  assert(envSeen?.PYTHONPATH === ['configured', 'source', 'inherited', 'packages'].join(delimiter),
+    `configured pythonPath precedes inherited PYTHONPATH (got ${envSeen?.PYTHONPATH})`)
   delete process.env.DSH_TEST_LEAK
   delete process.env.MY_API_KEY
+  if (previousPythonPath === undefined) delete process.env.PYTHONPATH
+  else process.env.PYTHONPATH = previousPythonPath
   await service.dispose()
 }
 

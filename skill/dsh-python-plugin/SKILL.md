@@ -5,7 +5,9 @@ description: Convert a Python module or codebase into a DeepSeek Harness (dsh) p
 
 # Convert a Python module into a dsh plugin
 
-The Python Capability Bridge lets a Python module become a first-class dsh plugin with zero changes to business code. This skill drives the conversion end to end. The pipeline:
+The Python Capability Bridge lets a Python module become a first-class dsh plugin with zero changes to business code. This skill drives the conversion end to end. Two paths load the same decorated module: the **generic plugin** (`@deepseek-ai/dsh-python-bridge`) needs no codegen and no build — one `cordis.yml` entry is the whole integration; the **codegen** path builds a self-contained TypeScript package with static per-module types. Start with the generic path (Step 2a); fall back to codegen when the install cannot resolve the bridge packages as source or you want typed TS surfaces (Step 2b).
+
+The codegen pipeline:
 
 ```
 bridge.py ──▶ codegen ──▶ build ──▶ assemble ──▶ patch
@@ -47,9 +49,28 @@ Hard constraints the codegen parser enforces (violations are silently ignored �
 
 Read `references/decorators.md` for the full decorator contract, and `references/contracts.md` for the host-library integration patterns (e.g. how to discover and honor ownership/lifecycle contracts like LKB's `owner == actor` rule). The `initialize` manifest schema the runtime reports (services, methods, tools, listeners) lives in `references/manifest.md`.
 
-## Step 2 — Install (codegen → build → assemble → patch)
+## Step 2 — Mount the plugin
 
-One command from the bridge repo root:
+### Step 2a — Generic path (zero-build, default)
+
+When the dsh install can resolve `@deepseek-ai/dsh-python-bridge` and the runtime (source launch, or an install that ships them), one `cordis.patch.yml` entry is the whole integration — no codegen, no `tsc`:
+
+```yaml
+- id: <short>
+  name: '@deepseek-ai/dsh-python-bridge'
+  config:
+    pythonBin: python3
+    module: <pkg>_dsh.bridge
+    pythonPath: [/abs/path/to/python/src]
+    initArgs:
+      <snake_case_field>: value
+```
+
+The generic plugin reads the runtime manifest on `initialize` and registers the decorated service, tools, and listeners with the schemas the decorators declare. Prefer `pythonPath` (import roots) over copying source into the plugin dir when the business code must stay put.
+
+### Step 2b — Codegen path (built package)
+
+When the install cannot resolve the bridge packages (a built dsh install that ships neither the runtime nor the generic plugin), or you want a static per-module package, run the codegen pipeline from the bridge repo root:
 
 ```sh
 scripts/install-python-plugin.py \

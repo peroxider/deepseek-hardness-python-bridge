@@ -36,7 +36,7 @@ if (!existsSync(tsc)) {
 }
 
 // 1. Sync the bridge packages into the monorepo tree.
-for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen']) {
+for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen', 'python-bridge']) {
   for (const dir of ['src']) {
     cpSync(join(root, 'packages/bridge', pkg, dir), join(monorepo, 'packages/bridge', pkg, dir), { recursive: true })
   }
@@ -89,11 +89,25 @@ if (!base.includes('"@deepseek-ai/dsh-python-bridge-runtime"')) {
   ))
   console.log('registered bridge packages in monorepo tsconfig.base.json paths')
 }
+const baseWithRuntime = readFileSync(basePath, 'utf8')
+if (!baseWithRuntime.includes('"@deepseek-ai/dsh-python-bridge"')) {
+  const anchor = '"@deepseek-ai/dsh-python-bridge-codegen": ["./packages/bridge/python-bridge-codegen/src"],'
+  if (!baseWithRuntime.includes(anchor)) {
+    console.error('python bridge codegen path anchor not found')
+    process.exit(1)
+  }
+  writeFileSync(basePath, baseWithRuntime.replace(
+    anchor,
+    `${anchor}\n      "@deepseek-ai/dsh-python-bridge": ["./packages/bridge/python-bridge/src"],`,
+  ))
+  console.log('registered generic bridge package in monorepo tsconfig.base.json paths')
+}
 
 // 4. Build the three projects with the monorepo's own reference graph.
 const projects = [
   'packages/bridge/python-bridge-runtime',
   'packages/bridge/python-bridge-codegen',
+  'packages/bridge/python-bridge',
   'packages/bridge/python-bridge-ml',
 ]
 const result = spawnSync(tsc, ['-b', ...projects], { cwd: monorepo, stdio: 'inherit' })
@@ -101,4 +115,4 @@ if (result.status !== 0) {
   console.error(`strict typecheck failed (exit ${result.status})`)
   process.exit(result.status ?? 1)
 }
-console.log('strict typecheck passed: runtime + codegen + generated package (full monorepo reference graph)')
+console.log('strict typecheck passed: runtime + generic plugin + codegen + generated package (full monorepo reference graph)')

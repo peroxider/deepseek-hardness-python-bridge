@@ -24,6 +24,7 @@ const z = {
   boolean: () => makeSchema('boolean'),
   any: () => makeSchema('any'),
   array: (item) => makeSchema('array', { item }),
+  dict: (item) => makeSchema('dict', { item }),
   union: (values) => makeSchema('union', { values }),
   const: (value) => makeSchema('const', { value }),
 }

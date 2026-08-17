@@ -11,6 +11,7 @@ export class Context {
   constructor(services = {}) {
     this._services = services
     this._disposers = []
+    this._listeners = []
   }
 
   get(name) {
@@ -31,8 +32,14 @@ export class Context {
     return child
   }
 
-  on() {
-    return () => {}
+  on(event, handler, options) {
+    const entry = { event, handler, options }
+    this._listeners.push(entry)
+    return () => { this._listeners = this._listeners.filter(item => item !== entry) }
+  }
+
+  inject(_dependencies, callback) {
+    return Promise.resolve(callback(this))
   }
 
   /** Mirror cordis' effect-based teardown: the returned function is the disposer. */
@@ -50,8 +57,11 @@ export class Context {
 }
 
 export class Service {
+  static init = Symbol.for('cordis.init')
+
   constructor(ctx, key) {
     this.ctx = ctx
     this.key = key
+    ctx._services[key] = this
   }
 }

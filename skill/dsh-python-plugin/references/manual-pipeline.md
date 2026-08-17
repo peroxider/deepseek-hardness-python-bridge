@@ -2,6 +2,26 @@
 
 Use when `scripts/install-python-plugin.py` cannot run (missing tsc, missing dsh install, or you need a custom layout). Each stage lists its exact inputs and outputs so partial automation stays possible.
 
+## 0. Generic path (zero-build, default)
+
+When the dsh install can resolve `@deepseek-ai/dsh-python-bridge` and the runtime (source launch, or an install that ships them), the pipeline collapses to one `cordis.patch.yml` entry — no codegen, no build:
+
+```yaml
+- insert:
+  - id: python-bridge
+    name: '@deepseek-ai/dsh-python-bridge-runtime'
+  - id: <short>
+    name: '@deepseek-ai/dsh-python-bridge'
+    config:
+      pythonBin: python3
+      module: <pkg>_dsh.bridge
+      pythonPath: [/abs/path/to/python/src]
+      initArgs:
+        <snake_case_field>: value
+```
+
+The generic plugin reads the runtime manifest on `initialize` and registers the decorated service, tools, and listeners with the decorator schemas; `pythonPath` supplies import roots so business source can stay put. Skip ahead to [5. verify](#5-verify). The codegen stages below produce the self-contained built package for installs that cannot resolve the bridge packages as source.
+
 ## 1. codegen — Python source → TS package
 
 ```sh

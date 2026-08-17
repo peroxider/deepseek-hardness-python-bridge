@@ -16,7 +16,7 @@
  */
 
 import { spawn as spawnChildProcess } from 'node:child_process'
-import { resolve } from 'node:path'
+import { delimiter, resolve } from 'node:path'
 import type { Readable, Writable } from 'node:stream'
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { SandboxPolicy, SandboxProvider } from '@deepseek-ai/dsh-sandbox'
@@ -60,6 +60,8 @@ export interface PythonBridgeSpawnSpec {
   pipDeps?: string[]
   /** Python interpreter binary (default: `python`). */
   pythonBin?: string
+  /** Import roots prepended to the child process `PYTHONPATH`. */
+  pythonPath?: string[]
   /** Working directory for the child process. */
   cwd?: string
   /** Sandbox policy for `ctx.sandbox.confine()` when the seam is loaded. */
@@ -511,7 +513,14 @@ export class PythonBridge {
   }
 
   private buildEnv(): Record<string, string> {
-    return { ...scrubbedParentEnv(), PYTHONUNBUFFERED: '1' }
+    const env: Record<string, string> = { ...scrubbedParentEnv(), PYTHONUNBUFFERED: '1' }
+    if (this.spec.pythonPath?.length) {
+      env.PYTHONPATH = [
+        ...this.spec.pythonPath,
+        ...(env.PYTHONPATH ? [env.PYTHONPATH] : []),
+      ].join(delimiter)
+    }
+    return env
   }
 
   private wireTransport(transport: PythonBridgeTransport): void {

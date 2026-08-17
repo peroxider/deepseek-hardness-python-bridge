@@ -7,6 +7,7 @@
  */
 
 import { PassThrough } from 'node:stream'
+import { delimiter } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   JsonRpcLineTransport,
@@ -293,6 +294,35 @@ describe('PythonBridge (fake child, real transport)', () => {
       'python', '-u', '-m', 'dsh_bridge.runtime', 'my.mod',
       '--class', 'Provider', '--init-args', '{"a":1}',
     ])
+  })
+
+  it('prepends configured import roots to the inherited PYTHONPATH', () => {
+    const previousPythonPath = process.env.PYTHONPATH
+    process.env.PYTHONPATH = ['inherited', 'packages'].join(delimiter)
+    try {
+      let envSeen: Record<string, string> | undefined
+      const child = new FakeChild()
+      fakeChildWithInitialize(child)
+      service.spawn(
+        {
+          module: 'my.mod',
+          pythonPath: ['configured', 'source'],
+          reconnect: { enabled: false },
+        },
+        {
+          spawnFn: (_argv, options) => {
+            envSeen = options.env
+            return child
+          },
+        },
+      )
+      expect(envSeen?.PYTHONPATH).toBe(
+        ['configured', 'source', 'inherited', 'packages'].join(delimiter),
+      )
+    } finally {
+      if (previousPythonPath === undefined) delete process.env.PYTHONPATH
+      else process.env.PYTHONPATH = previousPythonPath
+    }
   })
 })
 

@@ -14,6 +14,30 @@ This guide walks through creating a Python module that exposes itself as a Cordi
 - A checkout of `deepseek-harness` with `pnpm install`.
 - A configured `pythonBin` pointing at the right interpreter.
 
+## Generic vs. codegen: choose your path
+
+Two ways mount the same decorated module. **Start with the generic plugin** — it needs no build, no codegen:
+
+```yaml
+- id: ml
+  name: '@deepseek-ai/dsh-python-bridge'
+  config:
+    pythonBin: python
+    module: my_ml.provider
+    className: MLProvider
+```
+
+On `initialize` the generic plugin reads the runtime manifest and registers the service, tools, and listeners with the schemas the decorators declare — zero codegen, zero `tsc`. Tool `outputSchema` and `parameters` pass through verbatim; object schemas missing `additionalProperties` default to `false` (the dsh-tools compiler requires it explicitly).
+
+The rest of this guide walks the **codegen** path, which produces a self-contained TypeScript package: static per-module method types, camelCase Config keys mapped from dataclass fields, and generated `static Config` validation. Reach for it when you want a buildable package (e.g. a built dsh install that cannot load `.ts` source) or typed TS surfaces.
+
+| | Generic plugin | codegen |
+| --- | --- | --- |
+| Package | `@deepseek-ai/dsh-python-bridge` | your generated package |
+| Build | none | `pnpm dsh-bridge-codegen` + `tsc` |
+| Config | `module` + `initArgs` + generic keys | camelCase dataclass-field keys |
+| Types | dynamic (runtime manifest) | static per-module TS |
+
 ## 1. Author the Python module
 
 Decorate a class to expose it as a Cordis Service Provider:

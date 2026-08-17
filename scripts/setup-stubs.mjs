@@ -29,6 +29,7 @@ const STUBS = [
   ['@deepseek-ai/schemastery', 'schemastery.mjs'],
   ['@deepseek-ai/dsh-tools', 'tools.mjs'],
   ['@deepseek-ai/dsh-python-bridge-runtime', null], // self-link for generated-package imports
+  ['@deepseek-ai/dsh-python-bridge', null],
 ]
 
 for (const [name, file] of STUBS) {
@@ -37,8 +38,10 @@ for (const [name, file] of STUBS) {
   let target
   if (file === null) {
     // Self-link so generated bridge packages can import the runtime source.
-    const runtimeSrc = join(root, 'packages/bridge/python-bridge-runtime/src/index.ts')
-    const href = pathToFileURL(runtimeSrc).href
+    const packageDir = name === '@deepseek-ai/dsh-python-bridge'
+      ? 'python-bridge'
+      : 'python-bridge-runtime'
+    const href = pathToFileURL(join(root, 'packages/bridge', packageDir, 'src/index.ts')).href
     target = `export * from '${href}'\nexport { default } from '${href}'\n`
   } else {
     const stub = pathToFileURL(join(root, 'tests/stubs', file)).href
@@ -59,7 +62,7 @@ for (const [name, file] of STUBS) {
 // The integration setup symlinks package-local node_modules to the REAL
 // monorepo wrappers; remove those links so the offline e2e resolves the
 // stubs above instead.
-for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen']) {
+for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen', 'python-bridge']) {
   const link = join(root, 'packages/bridge', pkg, 'node_modules')
   rmSync(link, { recursive: true, force: true })
 }

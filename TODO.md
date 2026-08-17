@@ -53,7 +53,7 @@
 
 新包 `packages/bridge/python-bridge/`（Service Provider 形态，注册为插件而非 `ctx.*` 服务）。
 
-- [ ] **任务**：实现 `PythonModulePlugin`：
+- [x] **任务**：实现 `PythonModulePlugin`：
   - `static inject = ['pythonBridge', 'tools']`（tools 仅当 manifest 含工具时）
   - `static Config`（schemastery）：`module: z.string().required()`、`className: z.string()`、
     `functions: z.array(z.string()).default([])`、`initArgs: z.record(z.any()).default({})`、
@@ -67,25 +67,25 @@
     - 每个 manifest listener → `ctx.on(event, handler, {prepend, global})`，handler 转发
       `bridge.notify('event/deliver', {event, payload})`；waterfall 模式 handler 必须 `return next()`
   - `ctx.effect()` 注册拆毁（fiber unload → `bridge.shutdown()`）
-- [ ] **验收**：真实 Loader 挂载单行配置即注册 `ctx.lkb` + 4 个工具；严格 `tsc -b` 零错误。
+- [x] **验收**：真实 Loader 挂载单行配置即注册 `ctx.lkb` + 4 个工具；严格 `tsc -b` 零错误。
 - [ ] **依赖**：M1.1。
 
 ### M1.3 动态注册的 schema 直传
 
-- [ ] **任务**：工具注册时 `parameters`/`output.schema` 直接使用 manifest 中的 JSON Schema
+- [x] **任务**：工具注册时 `parameters`/`output.schema` 直接使用 manifest 中的 JSON Schema
   （dsh-tools 编译器约束不变：object 必须显式 `additionalProperties`）。manifest 缺
   `additionalProperties` 时插件侧默认补 `false` 并打诊断日志（codegen 侧已强制，此处是防御）。
-- [ ] **验收**：`valueSchemaSpecToJsonSchema` + `validateJsonSchemaValue` 对 LKB 四个工具的实际
+- [x] **验收**：`valueSchemaSpecToJsonSchema` + `validateJsonSchemaValue` 对 LKB 四个工具的实际
   返回值全部通过。
 
 ### M1.4 REAL-composition 验证（无 codegen 路径）
 
-- [ ] **任务**：`tests/integration/generic-plugin.mjs`：
+- [x] **任务**：`tests/integration/generic-plugin.mjs`：
   cordis.yml 仅含 system-prompt + tools + python-bridge-runtime + 一行通用插件配置
   （LKB `lkb_dsh.bridge`），经真实 Loader 启动后：
   `ctx.lkb.create_task` → `claim` → `start` → `complete` 全生命周期 +
   4 工具经真实 ToolRuntime 可见可执行 + fiber dispose 拆毁子进程。
-- [ ] **验收**：断言全过；与 codegen 路径（`lkb-composition.mjs`）行为等价。
+- [x] **验收**：断言全过；与 codegen 路径（`lkb-composition.mjs`）行为等价。
 - [ ] **依赖**：M1.2、M1.3。
 
 ### M1.5 双路径文档
@@ -101,17 +101,17 @@
 
 ### M2.1 runtime spawn 支持 `pythonPath`
 
-- [ ] **任务**：`PythonBridgeSpawnSpec` 增加 `pythonPath?: string[]`；
+- [x] **任务**：`PythonBridgeSpawnSpec` 增加 `pythonPath?: string[]`；
   `buildEnv()` 将其与既有 `PYTHONPATH` 合并（`:` 连接，config 值在前）。
-- [ ] **验收**：生命周期测试断言 env 合并顺序；child 实际 import 到目标包。
+- [x] **验收**：生命周期测试断言 env 合并顺序；child 实际 import 到目标包。
 - [ ] **依赖**：无。
 
 ### M2.2 通用插件 + 安装脚本接线
 
-- [ ] **任务**：通用插件 Config 的 `pythonPath` 透传（M1.2 已含）；安装脚本新增
+- [x] **任务**：通用插件 Config 的 `pythonPath` 透传（M1.2 已含）；安装脚本新增
   `--python-path`（可重复），默认不再复制 `--python-src`（保留为兼容开关
   `--copy-python-src`）。
-- [ ] **验收**：LKB 通过 `pythonPath: [clawcodex/extensions/lkb/src]` 挂载成功，
+- [x] **验收**：LKB 通过 `pythonPath: [clawcodex/extensions/lkb/src]` 挂载成功，
   插件目录不再含 `lkb/` 副本。
 
 ---

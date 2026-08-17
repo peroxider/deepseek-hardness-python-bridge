@@ -9,8 +9,9 @@
  *   2. Python test suite (pytest; requires pytest on PATH)
  *   3. Codegen mirror checks (`tests/e2e/codegen-mirror.mjs`)
  *   4. Runtime lifecycle checks (`tests/e2e/runtime-lifecycle.mjs`)
- *   5. Real-child runtime E2E (`tests/e2e/runtime-real-child.mjs`)
- *   6. Generated-package E2E (`tests/e2e/generated-package.mjs`)
+ *   5. Generic-plugin checks (`tests/e2e/generic-plugin.mjs`)
+ *   6. Real-child runtime E2E (`tests/e2e/runtime-real-child.mjs`)
+ *   7. Generated-package E2E (`tests/e2e/generated-package.mjs`)
  *
  * Exits non-zero when any step fails.
  */
@@ -27,6 +28,7 @@ const steps = [
   ['python test suite', python, ['-m', 'pytest', 'tests/'], { cwd: join(root, 'python/sdk-dsl'), env: { ...process.env, PYTHONPATH: 'src' } }],
   ['codegen mirror checks', 'node', ['--experimental-strip-types', 'tests/e2e/codegen-mirror.mjs']],
   ['runtime lifecycle checks', 'node', ['--experimental-strip-types', 'tests/e2e/runtime-lifecycle.mjs']],
+  ['generic plugin checks', 'node', ['--experimental-strip-types', 'tests/e2e/generic-plugin.mjs']],
   ['runtime real-child E2E', 'node', ['--experimental-strip-types', 'tests/e2e/runtime-real-child.mjs']],
   ['generated-package E2E', 'node', ['--experimental-strip-types', 'tests/e2e/generated-package.mjs']],
 ]
@@ -55,6 +57,7 @@ if (existsSync(join(monorepo, 'vendor/cordis/src/index.ts')) && existsSync(tsc))
   const integrationSteps = [
     ['integration harness setup', 'node', ['scripts/setup-integration.mjs']],
     ['REAL-composition (real Loader + real schemastery + real ToolRuntime)', 'node', ['--experimental-transform-types', 'tests/integration/real-composition.mjs']],
+    ['generic LKB composition (no codegen)', 'node', ['--experimental-transform-types', 'tests/integration/generic-plugin.mjs']],
     ['strict typecheck (tsc -b in monorepo)', 'node', ['scripts/typecheck-integration.mjs']],
   ]
   for (const [name, command, args] of integrationSteps) {
