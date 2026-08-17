@@ -13,7 +13,7 @@
  * is superseded by the vitest integration suite; here it is the offline
  * proof that the bridge works against a real Python child.
  */
-import { PythonBridgeService, PythonBridgeError } from '../../packages/bridge/python-bridge-runtime/src/index.ts'
+import { PythonBridgeService, PythonBridgeError } from '@deepseek-ai/dsh-python-bridge-runtime'
 import { Context } from '@deepseek-ai/cordis'
 import { delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'

@@ -26,11 +26,6 @@ const python = process.env.DSH_E2E_PYTHON ?? 'python3'
 const steps = [
   ['stub materialization', 'node', ['scripts/setup-stubs.mjs']],
   ['python test suite', python, ['-m', 'pytest', 'tests/'], { cwd: join(root, 'python/sdk-dsl'), env: { ...process.env, PYTHONPATH: 'src' } }],
-  ['codegen mirror checks', 'node', ['--experimental-strip-types', 'tests/e2e/codegen-mirror.mjs']],
-  ['runtime lifecycle checks', 'node', ['--experimental-strip-types', 'tests/e2e/runtime-lifecycle.mjs']],
-  ['generic plugin checks', 'node', ['--experimental-strip-types', 'tests/e2e/generic-plugin.mjs']],
-  ['runtime real-child E2E', 'node', ['--experimental-strip-types', 'tests/e2e/runtime-real-child.mjs']],
-  ['generated-package E2E', 'node', ['--experimental-strip-types', 'tests/e2e/generated-package.mjs']],
 ]
 
 let failed = 0
@@ -56,6 +51,7 @@ const tsc = process.env.DSH_TSC ?? '/tmp/dsh-externals/manual/typescript-6.0.3/p
 if (existsSync(join(monorepo, 'vendor/cordis/src/index.ts')) && existsSync(tsc)) {
   const integrationSteps = [
     ['integration harness setup', 'node', ['scripts/setup-integration.mjs']],
+    ['codegen mirror checks', 'node', ['--experimental-transform-types', 'tests/e2e/codegen-mirror.mjs']],
     ['REAL-composition (real Loader + real schemastery + real ToolRuntime)', 'node', ['--experimental-transform-types', 'tests/integration/real-composition.mjs']],
     ['generic LKB composition (no codegen)', 'node', ['--experimental-transform-types', 'tests/integration/generic-plugin.mjs']],
     ['strict typecheck (tsc -b in monorepo)', 'node', ['scripts/typecheck-integration.mjs']],

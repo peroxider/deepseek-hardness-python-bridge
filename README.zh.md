@@ -53,8 +53,8 @@ DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python �
 
 - **"任意 Python 模块"指受约束的装饰器形状** —— 关键字参数装饰器加一个前置位置名（`@service(name='ml', ...)`）。全限定调用（`@dsh_bridge.service(...)`）、导入别名（`from dsh_bridge import service as svc`）、非关键字参数会被基于正则的解析器**静默忽略**。每个模块只发射第一个 `@service` 类；非 dataclass 的 `__init__` 参数不做自省。
 - **`@capability` / `@guard` / `@restrict_tools` / `@system_prompt_section` 只解析不发射** —— 暂不产生生成代码。
-- **`packages/bridge/*/tests/` 下的 vitest 套件尚未在本环境运行**（vitest 自身依赖闭包离线不可得）；其断言已由 `tests/e2e/` 下的纯 Node 脚本镜像，并在 monorepo 内真实运行。
-- **monorepo 集成已验证但尚未合并** —— deepseek-harness 检出中留有验证产生的未提交工作区改动（bridge 包副本与 `tsconfig.base.json` 的 paths 注册）。
+- **TypeScript 包的 vitest 套件在 deepseek-harness 中运行**；本仓 `tests/e2e/` 下的纯 Node 脚本同时镜像其断言，作为跨仓验收层。
+- **deepseek-harness 负责所有 bridge TypeScript 包** —— checkout 不在 `/home/chad/workspace/deepseek-harness` 时设置 `DSH_MONOREPO`。
 
 ## 仓库结构
 
@@ -65,16 +65,7 @@ python/sdk-dsl/                          dsh-bridge PyPI 包：装饰器 + 运�
   src/dsh_bridge/_type_inference.py        PEP 484 → JSON Schema 推断
   src/dsh_bridge/_errors.py                异常 → JSON-RPC code/kind 词典
   tests/                                   pytest：单元 + 真实子进程集成（49 个测试）
-packages/bridge/
-  python-bridge-runtime/                 @deepseek-ai/dsh-python-bridge-runtime
-    src/index.ts                           PythonBridgeService（ctx.pythonBridge）+ PythonBridge 客户端
-    tests/                                 vitest：传输、错误映射、重连
-  python-bridge/                        @deepseek-ai/dsh-python-bridge
-    src/index.ts                           通用 manifest 驱动插件（PythonModulePlugin）
-  python-bridge-codegen/                 @deepseek-ai/dsh-python-bridge-codegen
-    src/index.ts                           基于 AST 的 TS 生成器（parseModuleSources / generateBridgePackage）
-    bin/dsh-bridge-codegen.js              CLI 入口
-    tests/                                 vitest：解析器、类型投影、输出
+deepseek-harness/packages/bridge/        runtime、通用插件与 codegen TypeScript 包的唯一源码位置
 examples/python-bridge-ml/               可运行的 Service Provider + tool + listener 快照
 docs/cookbook/adding-a-python-bridge.md  用户逐步指南（中英双语）
 docs/guides/human-engineer.md            人类工程师使用指南（中英双语）
@@ -232,7 +223,7 @@ PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
 
-独立仓库在离线层通过提交的 stub（`tests/stubs/`，由 `scripts/setup-stubs.mjs` 物化）解析 `@deepseek-ai/*` 导入；集成层（`scripts/setup-integration.mjs`、`tests/integration/real-composition.mjs`、`scripts/typecheck-integration.mjs`）则绑定真实的 monorepo 源码。在 deepseek-harness monorepo 内，pnpm workspace 解析绑定真实包，`packages/bridge/*/tests/` 下的 vitest 套件在那里运行。
+独立仓库在离线层通过提交的 stub（`tests/stubs/`，由 `scripts/setup-stubs.mjs` 物化）解析非 bridge 的 `@deepseek-ai/*` 导入。bridge 包 wrapper 始终指向 `DSH_MONOREPO` 选定的 deepseek-harness checkout；集成与严格类型检查也直接使用同一源码，因此本仓保留 Python 侧验收而不再维护第二份 TypeScript 包副本。
 
 ## 非目标
 

@@ -15,11 +15,16 @@
  * Inside the real monorepo these stubs are NOT used: pnpm workspace
  * resolution binds the genuine packages.
  */
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const monorepo = process.env.DSH_MONOREPO ?? '/home/chad/workspace/deepseek-harness'
+if (!existsSync(join(monorepo, 'packages', 'bridge'))) {
+  console.error(`deepseek-harness not found at ${monorepo}; set DSH_MONOREPO`)
+  process.exit(1)
+}
 
 const STUBS = [
   ['@deepseek-ai/cordis', 'cordis.mjs'],
@@ -30,6 +35,7 @@ const STUBS = [
   ['@deepseek-ai/dsh-tools', 'tools.mjs'],
   ['@deepseek-ai/dsh-python-bridge-runtime', null], // self-link for generated-package imports
   ['@deepseek-ai/dsh-python-bridge', null],
+  ['@deepseek-ai/dsh-python-bridge-codegen', null],
 ]
 
 for (const [name, file] of STUBS) {
@@ -37,12 +43,10 @@ for (const [name, file] of STUBS) {
   mkdirSync(dir, { recursive: true })
   let target
   if (file === null) {
-    // Self-link so generated bridge packages can import the runtime source.
-    const packageDir = name === '@deepseek-ai/dsh-python-bridge'
-      ? 'python-bridge'
-      : 'python-bridge-runtime'
-    const href = pathToFileURL(join(root, 'packages/bridge', packageDir, 'src/index.ts')).href
-    target = `export * from '${href}'\nexport { default } from '${href}'\n`
+    const packageDir = name.slice('@deepseek-ai/dsh-'.length)
+    const href = pathToFileURL(join(monorepo, 'packages/bridge', packageDir, 'src/index.ts')).href
+    target = `export * from '${href}'\n`
+    if (name !== '@deepseek-ai/dsh-python-bridge-codegen') target += `export { default } from '${href}'\n`
   } else {
     const stub = pathToFileURL(join(root, 'tests/stubs', file)).href
     target = `export * from '${stub}'\n`
@@ -59,11 +63,4 @@ for (const [name, file] of STUBS) {
   console.log(`stubbed ${name}`)
 }
 
-// The integration setup symlinks package-local node_modules to the REAL
-// monorepo wrappers; remove those links so the offline e2e resolves the
-// stubs above instead.
-for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen', 'python-bridge']) {
-  const link = join(root, 'packages/bridge', pkg, 'node_modules')
-  rmSync(link, { recursive: true, force: true })
-}
 console.log('standalone stubs ready')

@@ -13,8 +13,8 @@
 | 资产 | 位置 | 状态 |
 | --- | --- | --- |
 | Python 装饰器库 + 运行时 | `python/sdk-dsl/` | 44 pytest 全绿；真实子进程 wire 验证 |
-| TS 运行时 `PythonBridgeService` | `packages/bridge/python-bridge-runtime/` | owned-spawn + 关停阶梯 + 重连 + sandbox confine（rc.6 契约） |
-| codegen | `packages/bridge/python-bridge-codegen/` | 正则解析 + 两种包形态 + dataclass 字段映射（私有字段豁免） |
+| TS 运行时 `PythonBridgeService` | deepseek-harness `packages/bridge/python-bridge-runtime/` | owned-spawn + 关停阶梯 + 重连 + sandbox confine（rc.6 契约） |
+| codegen | deepseek-harness `packages/bridge/python-bridge-codegen/` | 正则解析 + 两种包形态 + dataclass 字段映射（私有字段豁免） |
 | 一键安装脚本 | `scripts/install-python-plugin.py` | 步骤解耦 + 环境自适应 + `--steps/--uninstall/--dry-run` |
 | 转化技能 | `skill/dsh-python-plugin/` | 首轮 6/6 评估通过 |
 | 实证案例 | LKB（clawcodex `extensions/lkb/src/lkb_dsh/`） | 生产实例热加载运行中 |
@@ -152,13 +152,13 @@
 
 ### M4.2 codegen bin 发布
 
-- [ ] **任务**：`@deepseek-ai/dsh-python-bridge-codegen` 可 `pnpm dlx` 执行；
+- [x] **任务**：`@deepseek-ai/dsh-python-bridge-codegen` 可 `pnpm dlx` 执行；
   bin 入口兼容源码直跑与构建产物。
 
 ### M4.3 monorepo 合流
 
-- [ ] **任务**：bridge 仓库的 `packages/bridge/*` 与 monorepo 的提交合流为单一事实源
-  （当前双仓同步拷贝），确定主仓位置并更新 README 指引。
+- [x] **任务**：deepseek-harness 的 `packages/bridge/*` 是 TypeScript 包的单一事实源；
+  本仓仅保留 Python SDK、示例与跨仓验收，并通过 `DSH_MONOREPO` 解析主仓源码。
 
 ---
 
@@ -208,8 +208,8 @@
    （spec、`docs/subsystems/`、`.agents/`）不提交。
 4. **生产实例**：替换已加载插件的产物后，提醒用户重启 `dsh web`；不自行重启。
 5. **推送**：正常 push；改写历史仅 `--force-with-lease` 且先说明原因。
-6. **monorepo 同步**：M4.3 完成前，`packages/bridge/*` 的改动需同步到
-   `/home/chad/workspace/deepseek-harness/packages/bridge/` 并跑 `tsc -b`。
+6. **TypeScript 源码归属**：bridge TypeScript 包只在 deepseek-harness 的
+   `packages/bridge/*` 修改；本仓验收通过 `DSH_MONOREPO` 使用该事实源。
 
 ---
 

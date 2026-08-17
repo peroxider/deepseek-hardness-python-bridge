@@ -10,7 +10,7 @@ import {
   parseModuleSources,
   pythonTypeToTs,
   snakeToCamel,
-} from '../../packages/bridge/python-bridge-codegen/src/index.ts'
+} from '@deepseek-ai/dsh-python-bridge-codegen'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
