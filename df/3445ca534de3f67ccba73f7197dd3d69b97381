@@ -1,0 +1,32 @@
+TODO.md
+  s_86aed8fa1ab2c3::t_6f7bb3e8410e53 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "df3445ca534de3f67ccba73f7197dd3d69b97381",
+  "prompts": {},
+  "sessions": {
+    "s_86aed8fa1ab2c3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fbdfd67cc072c849c6638",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "dedupe_key": "6a7fbdfd67cc072c849c6638:6a827f1567cc072c849cbcfa:afterEdit:18e5262c",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "external_session_id": "6a7fbdfd67cc072c849c6638",
+        "operation_id": "6a827f1567cc072c849cbcfa",
+        "tool_type": "builtin",
+        "edit_kind": "file_edit",
+        "tool_use_id": "6a827f1567cc072c849cbcfa",
+        "runtime_client": "trae-tob-git-ai",
+        "client_type": "ide",
+        "source_scene": "agent",
+        "session_id": "6a7fbdfd67cc072c849c6638"
+      }
+    }
+  }
+}
