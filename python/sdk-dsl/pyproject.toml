@@ -40,10 +40,10 @@ dependencies = []
 dsh-bridge-runtime = "dsh_bridge.runtime:main"
 
 [project.urls]
-Homepage = "https://github.com/deepseek-ai/deepseek-harness"
-Documentation = "https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/python-bridge.md"
-Issues = "https://github.com/deepseek-ai/deepseek-harness/issues"
-Source = "https://github.com/deepseek-ai/deepseek-harness"
+Homepage = "https://github.com/peroxider/deepseek-hardness-python-bridge"
+Documentation = "https://github.com/peroxider/deepseek-hardness-python-bridge/blob/main/python/sdk-dsl/README.md"
+Issues = "https://github.com/peroxider/deepseek-hardness-python-bridge/issues"
+Source = "https://github.com/peroxider/deepseek-hardness-python-bridge"
 
 [dependency-groups]
 test = ["pytest>=8.0"]
