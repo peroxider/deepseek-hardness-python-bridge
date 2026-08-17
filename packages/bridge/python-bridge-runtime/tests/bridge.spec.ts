@@ -9,6 +9,7 @@
 import { PassThrough } from 'node:stream'
 import { delimiter } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
 import {
   JsonRpcLineTransport,
   JsonRpcResponseError,
@@ -33,6 +34,7 @@ class MockTransport implements PythonBridgeTransport {
   notifications: Array<{ method: string; params: Record<string, unknown> }> = []
   requestHandler: ((method: string, params: Record<string, unknown>) => Promise<unknown>) | undefined
   notificationHandler: ((method: string, params: Record<string, unknown>) => void) | undefined
+  workerRequestHandler: ((method: string, params: Record<string, unknown>) => Promise<unknown>) | undefined
   closed = false
 
   request(method: string, params: object): Promise<unknown> {
@@ -48,7 +50,7 @@ class MockTransport implements PythonBridgeTransport {
   close(): void { this.closed = true }
 
   onRequest(handler: (method: string, params: Record<string, unknown>) => Promise<unknown>): void {
-    this.requestHandler = handler
+    this.workerRequestHandler = handler
   }
 
   onNotification(handler: (method: string, params: Record<string, unknown>) => void): void {
@@ -140,7 +142,7 @@ describe('PythonBridge (mock transport)', () => {
 
   beforeEach(() => {
     transport = new MockTransport()
-    service = new PythonBridgeService({} as never)
+    service = new PythonBridgeService(new Context())
   })
 
   afterEach(async () => {
@@ -209,7 +211,7 @@ describe('PythonBridge (fake child, real transport)', () => {
   let service: PythonBridgeService
 
   beforeEach(() => {
-    service = new PythonBridgeService({} as never)
+    service = new PythonBridgeService(new Context())
   })
 
   afterEach(async () => {
@@ -333,7 +335,7 @@ describe('PythonBridge (interpreter probe)', () => {
   let service: PythonBridgeService
 
   beforeEach(() => {
-    service = new PythonBridgeService({} as never)
+    service = new PythonBridgeService(new Context())
   })
 
   afterEach(async () => {
