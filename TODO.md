@@ -133,9 +133,9 @@
 
 ### M3.3 CI 发布流水线
 
-- [ ] **任务**：GitHub workflow：pytest → build → （tag 触发）publish PyPI。
+- [x] **任务**：GitHub workflow：pytest → build → （tag 触发）publish PyPI。
   首版可手动 `twine upload` 验证流程。
-- [ ] **依赖**：M3.1。
+- [x] **依赖**：M3.1。
 
 ---
 

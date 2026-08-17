@@ -52,6 +52,17 @@ pip install -e .[test]
 pytest
 ```
 
+## Release
+
+Publishing is a GitHub Actions workflow (`.github/workflows/publish-pypi.yml`): `pytest` runs across supported Python versions, the wheel builds and smoke-tests, and a pushed `v*` tag publishes to PyPI via trusted publishing (OIDC). Until the PyPI publisher is configured, cut the first release manually from a local build:
+
+```sh
+cd python/sdk-dsl
+python -m pip install build twine
+python -m build --outdir dist
+twine upload dist/*
+```
+
 ## License
 
 MIT.
