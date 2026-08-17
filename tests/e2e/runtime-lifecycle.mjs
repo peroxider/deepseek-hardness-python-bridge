@@ -85,7 +85,7 @@ const ctx = new Context({})
   const service = new PythonBridgeService(ctx)
   const child = new FakeChild()
   withInitialize(child)
-  const bridge = service.spawn({ module: 'example', reconnect: { enabled: false } }, { spawnFn: () => child })
+  const bridge = service.spawn({ module: 'example', reconnect: { enabled: false } }, { spawnFn: () => child, probeFn: () => true })
   await waitFor(() => bridge.ready, 'ready before worker-exit case')
   let caught = null
   const pending = bridge.call('never-answered', {}).catch(e => { caught = e })
@@ -101,7 +101,7 @@ const ctx = new Context({})
   const service = new PythonBridgeService(ctx)
   const child = new FakeChild()
   withInitialize(child)
-  const bridge = service.spawn({ module: 'example', reconnect: { enabled: false } }, { spawnFn: () => child })
+  const bridge = service.spawn({ module: 'example', reconnect: { enabled: false } }, { spawnFn: () => child, probeFn: () => true })
   await waitFor(() => bridge.ready, 'ready before bridge-down case')
   child.emitExit(1, null)
   let caught = null
@@ -117,7 +117,7 @@ const ctx = new Context({})
   const children = []
   const bridge = service.spawn(
     { module: 'example', reconnect: { enabled: true, initialDelayMs: 1, maxDelayMs: 5 } },
-    { spawnFn: () => { const c = new FakeChild(); withInitialize(c); children.push(c); return c } },
+    { spawnFn: () => { const c = new FakeChild(); withInitialize(c); children.push(c); return c }, probeFn: () => true },
   )
   await waitFor(() => bridge.ready, 'ready before reconnect case')
   children[0].emitExit(1, null)
@@ -131,7 +131,7 @@ const ctx = new Context({})
   const service = new PythonBridgeService(ctx)
   const child = new FakeChild()
   withInitialize(child)
-  const bridge = service.spawn({ module: 'example', graceMs: 5, reconnect: { enabled: false } }, { spawnFn: () => child })
+  const bridge = service.spawn({ module: 'example', graceMs: 5, reconnect: { enabled: false } }, { spawnFn: () => child, probeFn: () => true })
   await waitFor(() => bridge.ready, 'ready before ladder case')
   const shutdown = bridge.shutdown()
   await waitFor(() => child.kills.includes('SIGTERM'), 'SIGTERM after first grace')
@@ -149,7 +149,7 @@ const ctx = new Context({})
   withInitialize(child)
   service.spawn(
     { module: 'my.mod', className: 'Provider', initArgs: { a: 1 }, reconnect: { enabled: false } },
-    { spawnFn: (argv) => { argvSeen.push([...argv]); return child } },
+    { spawnFn: (argv) => { argvSeen.push([...argv]); return child }, probeFn: () => true },
   )
   const expected = ['python', '-u', '-m', 'dsh_bridge.runtime', 'my.mod', '--class', 'Provider', '--init-args', '{"a":1}']
   assert(JSON.stringify(argvSeen[0]) === JSON.stringify(expected), `argv passthrough (${JSON.stringify(argvSeen[0])})`)
@@ -177,7 +177,7 @@ const ctx = new Context({})
   withInitialize(child)
   service.spawn(
     { module: 'm', pythonPath: ['configured', 'source'], reconnect: { enabled: false } },
-    { spawnFn: (_argv, opts) => { envSeen = opts.env; return child } },
+    { spawnFn: (_argv, opts) => { envSeen = opts.env; return child }, probeFn: () => true },
   )
   assert(envSeen && !('DSH_TEST_LEAK' in envSeen), 'DSH_* names scrubbed')
   assert(envSeen && !('MY_API_KEY' in envSeen), 'credential-shaped names scrubbed')
@@ -208,7 +208,7 @@ const ctx = new Context({})
   withInitialize(child)
   service.spawn(
     { module: 'm', sandbox: 'workspace-write', cwd: '/tmp/ws', reconnect: { enabled: false } },
-    { spawnFn: (argv) => { argvSeen.push([...argv]); return child } },
+    { spawnFn: (argv) => { argvSeen.push([...argv]); return child }, probeFn: () => true },
   )
   assert(argvSeen[0]?.[0] === 'bwrap', `confined argv used (got ${argvSeen[0]?.[0]})`)
   assert(confinedCalls[0]?.policy?.mode === 'workspace-write', 'policy mode forwarded')
@@ -224,7 +224,7 @@ const ctx = new Context({})
   withInitialize(child2)
   service2.spawn(
     { module: 'm', sandbox: 'danger-full-access', reconnect: { enabled: false } },
-    { spawnFn: (argv) => { argvSeen2.push([...argv]); return child2 } },
+    { spawnFn: (argv) => { argvSeen2.push([...argv]); return child2 }, probeFn: () => true },
   )
   assert(argvSeen2[0]?.[0] === 'python', 'danger-full-access bypasses confine')
   assert(confinedCalls.length === 1, 'confine not called for danger-full-access')
@@ -247,6 +247,7 @@ const ctx = new Context({})
         children.push(c)
         return c
       },
+      probeFn: () => true,
     },
   )
   await waitFor(() => bridge.ready, 'ready before reconnect-throw case')
@@ -256,6 +257,25 @@ const ctx = new Context({})
   await new Promise(r => setTimeout(r, 60))
   assert(spawnCalls >= 2, 'reconnect attempted the respawn')
   assert(true, 'host survived a throwing respawn in the reconnect timer')
+  await service.dispose()
+}
+
+// 10. probe: a failing interpreter probe surfaces dependency-missing with
+// install guidance, and no child is ever spawned.
+{
+  const service = new PythonBridgeService(ctx)
+  let spawnCalls = 0
+  let caught = null
+  try {
+    service.spawn(
+      { module: 'm', reconnect: { enabled: false } },
+      { spawnFn: () => { spawnCalls++; return new FakeChild() }, probeFn: () => false },
+    )
+  } catch (e) { caught = e }
+  assert(caught instanceof PythonBridgeError && caught.kind === 'dependency-missing' && caught.code === -32012,
+    `dependency-missing classification (got ${caught?.kind}/${caught?.code})`)
+  assert((caught?.message ?? '').includes('pip install dsh-bridge'), 'install guidance present in message')
+  assert(spawnCalls === 0, 'child never spawned after probe failure')
   await service.dispose()
 }
 

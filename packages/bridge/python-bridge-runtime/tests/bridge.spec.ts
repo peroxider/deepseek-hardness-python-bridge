@@ -221,7 +221,7 @@ describe('PythonBridge (fake child, real transport)', () => {
     fakeChildWithInitialize(child)
     const bridge = service.spawn(
       { module: 'example', reconnect: { enabled: false } },
-      { spawnFn: () => child },
+      { spawnFn: () => child, probeFn: () => true },
     )
     await vi.waitFor(() => expect(bridge.ready).toBe(true))
     // A request the child never answers stays in flight.
@@ -235,7 +235,7 @@ describe('PythonBridge (fake child, real transport)', () => {
     fakeChildWithInitialize(child)
     const bridge = service.spawn(
       { module: 'example', reconnect: { enabled: false } },
-      { spawnFn: () => child },
+      { spawnFn: () => child, probeFn: () => true },
     )
     await vi.waitFor(() => expect(bridge.ready).toBe(true))
     child.emitExit(1, null)
@@ -253,6 +253,7 @@ describe('PythonBridge (fake child, real transport)', () => {
           children.push(child)
           return child
         },
+        probeFn: () => true,
       },
     )
     await vi.waitFor(() => expect(bridge.ready).toBe(true))
@@ -266,7 +267,7 @@ describe('PythonBridge (fake child, real transport)', () => {
     fakeChildWithInitialize(child)
     const bridge = service.spawn(
       { module: 'example', graceMs: 5, reconnect: { enabled: false } },
-      { spawnFn: () => child },
+      { spawnFn: () => child, probeFn: () => true },
     )
     await vi.waitFor(() => expect(bridge.ready).toBe(true))
     const shutdown = bridge.shutdown()
@@ -288,6 +289,7 @@ describe('PythonBridge (fake child, real transport)', () => {
           argvSeen.push([...argv])
           return child
         },
+        probeFn: () => true,
       },
     )
     expect(argvSeen[0]).toEqual([
@@ -314,6 +316,7 @@ describe('PythonBridge (fake child, real transport)', () => {
             envSeen = options.env
             return child
           },
+          probeFn: () => true,
         },
       )
       expect(envSeen?.PYTHONPATH).toBe(
@@ -323,6 +326,55 @@ describe('PythonBridge (fake child, real transport)', () => {
       if (previousPythonPath === undefined) delete process.env.PYTHONPATH
       else process.env.PYTHONPATH = previousPythonPath
     }
+  })
+})
+
+describe('PythonBridge (interpreter probe)', () => {
+  let service: PythonBridgeService
+
+  beforeEach(() => {
+    service = new PythonBridgeService({} as never)
+  })
+
+  afterEach(async () => {
+    await service.dispose()
+  })
+
+  it('probes the configured interpreter binary before spawn', () => {
+    const probed: string[] = []
+    const child = new FakeChild()
+    fakeChildWithInitialize(child)
+    service.spawn(
+      { module: 'my.mod', pythonBin: 'custom-python', reconnect: { enabled: false } },
+      { spawnFn: () => child, probeFn: (bin) => { probed.push(bin); return true } },
+    )
+    expect(probed).toEqual(['custom-python'])
+  })
+
+  it('throws dependency-missing with install guidance when dsh_bridge is absent', () => {
+    let error: unknown
+    try {
+      service.spawn(
+        { module: 'my.mod', pythonBin: 'missing-dsh', reconnect: { enabled: false } },
+        { probeFn: () => false },
+      )
+    } catch (caught) {
+      error = caught
+    }
+    expect(error).toBeInstanceOf(PythonBridgeError)
+    expect(error).toMatchObject({ kind: 'dependency-missing', code: -32012 })
+    expect((error as Error).message).toContain('pip install dsh-bridge')
+  })
+
+  it('never calls spawnFn when the probe fails', () => {
+    let spawnCalls = 0
+    try {
+      service.spawn(
+        { module: 'my.mod', reconnect: { enabled: false } },
+        { spawnFn: () => { spawnCalls++; return new FakeChild() }, probeFn: () => false },
+      )
+    } catch { /* expected probe rejection */ }
+    expect(spawnCalls).toBe(0)
   })
 })
 

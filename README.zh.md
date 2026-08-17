@@ -214,6 +214,7 @@ scripts/install-python-plugin.py \
 | `ConnectionError` | `-32010` | `bridge-down` |
 | 其它 | `-32603` | `exception` |
 | 调用期间子进程退出 | `-32011` | `worker-exit` |
+| 解释器缺少 dsh-bridge（spawn 时探测） | `-32012` | `dependency-missing` |
 
 ## 测试
 

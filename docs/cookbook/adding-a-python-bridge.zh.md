@@ -201,11 +201,14 @@ export default MlService
 | `KeyError` / `AttributeError` | `-32005` | `not-found` |
 | `ConnectionError` | `-32010` | `bridge-down` |
 | 其它 | `-32603` | `exception` |
+| 调用期间子进程退出 | `-32011` | `worker-exit` |
+| 解释器缺少 dsh-bridge（spawn 时探测） | `-32012` | `dependency-missing` |
 
 `PythonBridgeError` 携带 wire `kind` 和 `code`，让 tool execute 路径可以按 `packages/core/tools/src/index.ts:343` 转换为 `ToolCallError`。
 
 ## 排错
 
+- **spawn 时报 `dependency-missing`（`-32012`）** —— 配置的 `pythonBin` 无法 `import dsh_bridge`；错误信息会指明解释器与模块。用 `pip install dsh-bridge` 安装到该解释器（或把 `pythonBin` 指向正确的解释器）。bridge 在 spawn 前先探测，因此会立即暴露问题，而不是表现为 `worker-exit`。
 - **调用后报 `bridge-down`** —— Python 子进程已退出；查看 stderr 的堆栈并确认 `pipDeps` 已安装。
 - **方法调用返回 `-32601` method not found** —— 确认 `@provide_method` 装饰器位于 `@service` 装饰的类内。
 - **正确调用却得到 `-32004` invalid-args** —— TypeScript 端的 JSON Schema 拒绝了输入；检查参数类型并重新运行 codegen。

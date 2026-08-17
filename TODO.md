@@ -120,16 +120,16 @@
 
 ### M3.1 发布准备
 
-- [ ] **任务**：`python/sdk-dsl/pyproject.toml` 完善（version 对齐、classifiers、
+- [x] **任务**：`python/sdk-dsl/pyproject.toml` 完善（version 对齐、classifiers、
   `project.entry-points`）；README 与 PyPI 长描述。
-- [ ] **验收**：`python3 -m build` 产出 wheel；`pip install dist/*.whl` 后
+- [x] **验收**：`python3 -m build` 产出 wheel；`pip install dist/*.whl` 后
   `python -c "import dsh_bridge; print(dsh_bridge.__version__)"` 通过。
 
 ### M3.2 子进程解释器探测
 
-- [ ] **任务**：spawn 前以 `pythonBin -c "import dsh_bridge"` 探测；失败时报错并附
+- [x] **任务**：spawn 前以 `pythonBin -c "import dsh_bridge"` 探测；失败时报错并附
   安装指引（而非静默 `worker-exit`）。探测结果缓存（per pythonBin）。
-- [ ] **验收**：指向无 `dsh_bridge` 的解释器时错误信息含 `pip install dsh-bridge`。
+- [x] **验收**：指向无 `dsh_bridge` 的解释器时错误信息含 `pip install dsh-bridge`。
 
 ### M3.3 CI 发布流水线
 
@@ -166,19 +166,19 @@
 
 ### M5.1 子命令骨架
 
-- [ ] **任务**：dsh CLI 增加 `dsh plugin install <source.py> [--name x] [--id x]
+- [x] **任务**：dsh CLI 增加 `dsh plugin install <source.py> [--name x] [--id x]
   [--profile web] [--config-json '{...}'] [--python-path ...]`。profile 感知
   （读 `~/.dsh/profiles/<profile>/`），环境发现内化（不再需要 `DSH_TSC` 等变量）。
 
 ### M5.2 通用路径（默认）
 
-- [ ] **任务**：检测到目标为通用插件可承载（service/tool/listener 形状）时，仅向
+- [x] **任务**：检测到目标为通用插件可承载（service/tool/listener 形状）时，仅向
   `cordis.patch.yml` 插入一行配置（幂等，同 id 替换），无需任何构建。
-- [ ] **验收**：`dsh plugin install lkb_dsh/bridge.py` 后实例热加载，工具立即可用。
+- [x] **验收**：`dsh plugin install lkb_dsh/bridge.py` 后实例热加载，工具立即可用。
 
 ### M5.3 codegen 路径（`--typed`）
 
-- [ ] **任务**：保留完整 生成→构建→装配→patch 流程（复用 install-python-plugin.py 逻辑，
+- [x] **任务**：保留完整 生成→构建→装配→patch 流程（复用 install-python-plugin.py 逻辑，
   移植为 dsh 内建）。`--steps/--dry-run/--uninstall` 等价物。
 
 ---

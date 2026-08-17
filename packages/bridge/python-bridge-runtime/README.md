@@ -28,6 +28,10 @@ A typical generated entry calls `ctx.pythonBridge.spawn({ module, className, ini
 
 The bridge owns its spawn the same way SDK-managed transports do (see the `dsh-subprocess` README, "SDK-managed spawns remain outside"): a long-lived `node:child_process` framed by `JsonRpcLineTransport` over the child's stdio. Environment policy stays single-sourced through `scrubbedParentEnv()`.
 
+## Interpreter probe
+
+Before spawning, the bridge verifies the interpreter can import the bridge runtime with `pythonBin -c "import dsh_bridge"`. A probe failure raises `PythonBridgeError` with `kind: 'dependency-missing'`, `code: -32012`, and `pip install dsh-bridge` guidance — never a confusing immediate `worker-exit`. Probe results are cached per `pythonBin`, so known-good interpreters are not re-probed on reconnect. Tests substitute the probe through `internals.probeFn`.
+
 ## Reconnect
 
 An unexpected child exit respawns the interpreter with exponential backoff (spec §6.7). `PythonBridge.spawn()` accepts a `reconnect` block:
@@ -55,6 +59,7 @@ The attempt budget resets after `maxDelayMs` of stable uptime. While disconnecte
 | `ConnectionError` | `-32010` | `bridge-down` |
 | any other | `-32603` | `exception` |
 | process exit during call | `-32011` | `worker-exit` |
+| interpreter lacks dsh-bridge (spawn-time probe) | `-32012` | `dependency-missing` |
 
 `PythonBridgeError` carries `kind` and `code` matching the wire vocabulary, plus the original `data` payload for diagnostics.
 

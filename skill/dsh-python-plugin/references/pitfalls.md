@@ -53,6 +53,12 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 **Cause**: the tool's return carries host envelope fields (`commandId`, `revision`, …) the `output_schema` never declared, and `additionalProperties: false` rejects them. The mutation commits before the ToolRuntime validates the return.
 **Fix**: split payload shapes — model-facing tools return only domain fields + `decision` + `reason` (see `contracts.md` "Model-facing tool returns"); verify by compiling the declared schema and validating a real return value with dsh-tools' `valueSchemaSpecToJsonSchema` + `validateJsonSchemaValue`.
 
+## `dependency-missing` / `-32012` at spawn
+
+**Symptom**: `ctx.pythonBridge.spawn(...)` (or the generic plugin mount) throws `PythonBridgeError` with `kind: 'dependency-missing'` and the message `pip install dsh-bridge`.
+**Cause**: the configured `pythonBin` cannot `import dsh_bridge` — the runtime package is not installed in that interpreter (or `pythonBin` points at the wrong interpreter).
+**Fix**: `pip install dsh-bridge` into the target interpreter, or set `pythonBin` to the interpreter that has it. The bridge probes with `pythonBin -c "import dsh_bridge"` before spawning, so a missing runtime is caught immediately instead of surfacing as a confusing `worker-exit`.
+
 ## Python child exits immediately (`worker-exit`, `-32011`)
 
 **Cause**: the module fails to import inside the child — the child cwd lacks the packages.

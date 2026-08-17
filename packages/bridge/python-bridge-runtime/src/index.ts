@@ -15,7 +15,7 @@
  * @module @deepseek-ai/dsh-python-bridge-runtime
  */
 
-import { spawn as spawnChildProcess } from 'node:child_process'
+import { spawn as spawnChildProcess, spawnSync } from 'node:child_process'
 import { delimiter, resolve } from 'node:path'
 import type { Readable, Writable } from 'node:stream'
 import { Context, Service } from '@deepseek-ai/cordis'
@@ -197,6 +197,8 @@ export interface PythonBridgeInternals {
   transport?: PythonBridgeTransport
   /** Substitute a child-process factory for the real `node:child_process.spawn`. */
   spawnFn?: (argv: readonly string[], options: { cwd: string; env: Record<string, string> }) => PythonBridgeChild
+  /** Substitute the interpreter probe (default: `pythonBin -c "import dsh_bridge"`). */
+  probeFn?: (pythonBin: string) => boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -275,6 +277,17 @@ const RECONNECT_DEFAULTS = {
 
 /** Number of trailing stderr lines retained for worker-exit diagnostics. */
 const STDERR_RING_LINES = 100
+
+/** JSON-RPC code for a spawn-time probe failure (missing dsh-bridge runtime). */
+const DEPENDENCY_MISSING_CODE = -32012
+
+/**
+ * Interpreter probe results keyed by `pythonBin`. `dsh_bridge` presence is a
+ * per-interpreter fact, so a cached positive skips redundant probes on every
+ * reconnect and a cached negative makes the fast-fail error repeatable
+ * without re-spawning the interpreter.
+ */
+const interpreterProbeCache = new Map<string, boolean>()
 
 interface ChildExit {
   code: number | null
@@ -438,9 +451,28 @@ export class PythonBridge {
       return
     }
 
-    const argv = this.buildArgv()
+    const python = this.spec.pythonBin ?? 'python'
     const env = this.buildEnv()
     const cwd = this.spec.cwd ?? process.cwd()
+
+    // Fast-fail when the interpreter cannot import the bridge runtime. A
+    // missing dsh-bridge must surface as an actionable error with install
+    // guidance, not as a confusing immediate `worker-exit` from the child.
+    // No reconnect is scheduled here: a probe failure is a per-interpreter
+    // fact (cached), so an orphaned retry loop on the throwing constructor
+    // would be pointless. The reconnect timer's catch re-arms its own budget.
+    if (!this.probeInterpreter(python, env, cwd)) {
+      throw new PythonBridgeError(
+        `python interpreter '${python}' cannot import the dsh-bridge runtime ` +
+        `(needed to load module '${this.spec.module}'). ` +
+        'Install it with `pip install dsh-bridge`, or make the package ' +
+        "importable in that interpreter's environment, then retry.",
+        'dependency-missing',
+        DEPENDENCY_MISSING_CODE,
+      )
+    }
+
+    const argv = this.buildArgv()
 
     const spawnFn = this.internals.spawnFn ?? ((a: readonly string[], o: { cwd: string; env: Record<string, string> }) => {
       const executable = a[0]
@@ -481,6 +513,38 @@ export class PythonBridge {
     this.transport.start()
     this.wireTransport(this.transport)
     void this.initialize()
+  }
+
+  /**
+   * Verify the interpreter can import the dsh-bridge runtime before spawning.
+   * An injected `probeFn` (tests) bypasses the process cache for determinism;
+   * the default runs `pythonBin -c "import dsh_bridge"` with the child's
+   * cwd/env and caches the per-interpreter result.
+   *
+   * @param pythonBin - interpreter binary from the spawn spec.
+   * @param env - child environment (also used for the probe subprocess).
+   * @param cwd - child working directory (also used for the probe subprocess).
+   * @returns true when the interpreter can import `dsh_bridge`.
+   */
+  private probeInterpreter(pythonBin: string, env: Record<string, string>, cwd: string): boolean {
+    const injected = this.internals.probeFn
+    if (injected) return injected(pythonBin)
+    const cached = interpreterProbeCache.get(pythonBin)
+    if (cached !== undefined) return cached
+    let ok = false
+    try {
+      const result = spawnSync(pythonBin, ['-c', 'import dsh_bridge'], {
+        cwd,
+        env,
+        stdio: 'ignore',
+        windowsHide: true,
+      })
+      ok = result.status === 0
+    } catch {
+      ok = false
+    }
+    interpreterProbeCache.set(pythonBin, ok)
+    return ok
   }
 
   private buildArgv(): readonly string[] {

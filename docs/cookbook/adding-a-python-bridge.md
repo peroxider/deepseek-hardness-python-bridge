@@ -201,11 +201,14 @@ export default MlService
 | `KeyError` / `AttributeError` | `-32005` | `not-found` |
 | `ConnectionError` | `-32010` | `bridge-down` |
 | any other | `-32603` | `exception` |
+| process exit during call | `-32011` | `worker-exit` |
+| interpreter lacks dsh-bridge (spawn-time probe) | `-32012` | `dependency-missing` |
 
 `PythonBridgeError` carries the wire `kind` and `code` so Tool execute paths can convert to `ToolCallError` per `packages/core/tools/src/index.ts:343`.
 
 ## Troubleshooting
 
+- **`dependency-missing` at spawn (`-32012`)** — the configured `pythonBin` cannot `import dsh_bridge`; the error names the interpreter and the module. Install the runtime with `pip install dsh-bridge` into that interpreter (or point `pythonBin` at the right one). The bridge probes before spawning, so this surfaces immediately instead of as a `worker-exit`.
 - **`bridge-down` after a call** — the Python child exited; check stderr for the traceback and verify `pipDeps` is installed.
 - **Method calls return `-32601` method not found** — confirm the `@provide_method` decorator sits inside a `@service`-decorated class.
 - **`-32004` invalid-args on a correct call** — the JSON Schema on the TypeScript side rejected the input; review the parameter types and re-run codegen.

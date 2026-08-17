@@ -214,6 +214,7 @@ The steps are decoupled — each consumes artifacts the previous one left on dis
 | `ConnectionError` | `-32010` | `bridge-down` |
 | any other | `-32603` | `exception` |
 | process exit during call | `-32011` | `worker-exit` |
+| interpreter lacks dsh-bridge (spawn-time probe) | `-32012` | `dependency-missing` |
 
 ## Testing
 

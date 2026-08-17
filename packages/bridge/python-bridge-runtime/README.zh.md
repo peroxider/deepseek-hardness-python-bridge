@@ -28,6 +28,10 @@ declare module '@deepseek-ai/cordis' {
 
 Bridge 以 SDK 托管传输层相同的方式拥有自己的 spawn（见 `dsh-subprocess` README 的 "SDK-managed spawns remain outside"）：一个长生命周期的 `node:child_process`，通过 stdio 上的 `JsonRpcLineTransport` 组帧。环境策略通过 `scrubbedParentEnv()` 保持单一来源。
 
+## 解释器探测
+
+spawn 之前，bridge 会用 `pythonBin -c "import dsh_bridge"` 验证解释器能否导入 bridge 运行时。探测失败时抛出 `PythonBridgeError`，`kind: 'dependency-missing'`、`code: -32012`，并附带 `pip install dsh-bridge` 安装指引——而不是令人困惑的即时 `worker-exit`。探测结果按 `pythonBin` 缓存，已确认正常的解释器不会在重连时重复探测。测试可通过 `internals.probeFn` 替换探测。
+
 ## 重连
 
 子进程意外退出时会按指数退避重启解释器（spec §6.7）。`PythonBridge.spawn()` 接受 `reconnect` 配置块：
@@ -55,6 +59,7 @@ reconnect: {
 | `ConnectionError` | `-32010` | `bridge-down` |
 | 其他 | `-32603` | `exception` |
 | 调用期间子进程退出 | `-32011` | `worker-exit` |
+| 解释器缺少 dsh-bridge（spawn 时探测） | `-32012` | `dependency-missing` |
 
 `PythonBridgeError` 携带 `kind`、`code`（与 wire 一致）以及原始 `data` 负载。
 
