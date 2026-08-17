@@ -106,7 +106,7 @@ Start with the generic plugin; reach for codegen when you want static per-module
 
 ### 0. Generic quick start (zero-build)
 
-When the composition loads `@deepseek-ai/dsh-python-bridge-runtime`, one `cordis.yml` entry is the entire integration — no codegen, no build:
+When the composition loads `@deepseek-ai/dsh-python-bridge-runtime`, one `cordis.yml` entry is the entire integration — no codegen, no build. Both packages ship as dependencies of the `@deepseek-ai/dsh-base` bundle, so a fresh dsh installation resolves these bare names without extra install steps:
 
 ```yaml
 - id: lkb

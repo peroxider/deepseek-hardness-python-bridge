@@ -143,11 +143,11 @@
 
 ### M4.1 runtime 进入 dsh-base（首选）或独立发布
 
-- [ ] **任务**：评估两条路径并落地其一：
+- [x] **任务**：评估两条路径并落地其一：
   (a) `@deepseek-ai/dsh-python-bridge-runtime` + 通用插件（M1）加入 monorepo 的
       `@deepseek-ai/dsh-base` bundle 依赖，使每个 dsh 安装自带 `ctx.pythonBridge`；
   (b) 独立 npm 发布（profile 侧 `pnpm add` 解析）。
-- [ ] **验收**：全新 dsh 安装中 cordis.yml 以裸名 `@deepseek-ai/dsh-python-bridge`
+- [x] **验收**：全新 dsh 安装中 cordis.yml 以裸名 `@deepseek-ai/dsh-python-bridge`
   挂载成功，无 file:// 组装。
 
 ### M4.2 codegen bin 发布
