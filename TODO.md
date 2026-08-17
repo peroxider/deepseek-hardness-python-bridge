@@ -104,7 +104,7 @@
 - [x] **任务**：`PythonBridgeSpawnSpec` 增加 `pythonPath?: string[]`；
   `buildEnv()` 将其与既有 `PYTHONPATH` 合并（`:` 连接，config 值在前）。
 - [x] **验收**：生命周期测试断言 env 合并顺序；child 实际 import 到目标包。
-- [ ] **依赖**：无。
+- [x] **依赖**：无。
 
 ### M2.2 通用插件 + 安装脚本接线
 
@@ -152,13 +152,13 @@
 
 ### M4.2 codegen bin 发布
 
-- [ ] **任务**：`@deepseek-ai/dsh-python-bridge-codegen` 可 `pnpm dlx` 执行；
+- [x] **任务**：`@deepseek-ai/dsh-python-bridge-codegen` 可 `pnpm dlx` 执行；
   bin 入口兼容源码直跑与构建产物。
 
-### M4.3 monorepo 合流
+### M4.3 源码归属
 
-- [ ] **任务**：bridge 仓库的 `packages/bridge/*` 与 monorepo 的提交合流为单一事实源
-  （当前双仓同步拷贝），确定主仓位置并更新 README 指引。
+- [x] **任务**：本仓 `packages/bridge/*` 是三个 TypeScript bridge 包的单一事实源；
+  monorepo 仅提供真实依赖与严格类型检查环境，不保存同步源码副本。
 
 ---
 
@@ -208,8 +208,8 @@
    （spec、`docs/subsystems/`、`.agents/`）不提交。
 4. **生产实例**：替换已加载插件的产物后，提醒用户重启 `dsh web`；不自行重启。
 5. **推送**：正常 push；改写历史仅 `--force-with-lease` 且先说明原因。
-6. **monorepo 同步**：M4.3 完成前，`packages/bridge/*` 的改动需同步到
-   `/home/chad/workspace/deepseek-harness/packages/bridge/` 并跑 `tsc -b`。
+6. **跨仓类型检查**：`scripts/typecheck-integration.mjs` 在 monorepo 的临时 detached worktree
+   中装入本仓 bridge 源码并运行 `tsc -b`，不得改动 monorepo 工作树。
 
 ---
 

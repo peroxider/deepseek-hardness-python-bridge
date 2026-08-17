@@ -327,6 +327,9 @@ export class PythonBridge {
   private readonly eventListeners = new Set<(envelope: PythonBridgeEventEnvelope) => void>()
   private readonly logListeners = new Set<(entry: PythonBridgeLogEntry) => void>()
   private disposedCallbacks: Array<() => void> = []
+  private readonly readyPromise: Promise<PythonBridgeManifest>
+  private resolveReady!: (manifest: PythonBridgeManifest) => void
+  private rejectReady!: (error: PythonBridgeError) => void
 
   /** The manifest returned by the Python side during initialization. */
   get bridgeManifest(): PythonBridgeManifest | undefined {
@@ -342,7 +345,22 @@ export class PythonBridge {
     this.ctx = ctx
     this.spec = spec
     this.internals = internals
+    this.readyPromise = new Promise<PythonBridgeManifest>((resolve, reject) => {
+      this.resolveReady = resolve
+      this.rejectReady = reject
+    })
+    void this.readyPromise.catch(() => undefined)
     this.spawnChild()
+  }
+
+  /**
+   * Wait for the initial handshake and return its manifest.
+   *
+   * @returns The first successfully initialized worker manifest.
+   * @throws {@link PythonBridgeError} when initialization fails or disposal starts first.
+   */
+  waitUntilReady(): Promise<PythonBridgeManifest> {
+    return this.readyPromise
   }
 
   /**
@@ -418,6 +436,11 @@ export class PythonBridge {
   async shutdown(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
+    this.rejectReady(new PythonBridgeError(
+      `python bridge disposed before initialization completed (module=${this.spec.module})`,
+      'bridge-down',
+      -32010,
+    ))
     if (this.reconnectTimer !== undefined) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = undefined
@@ -619,13 +642,15 @@ export class PythonBridge {
       this.manifest = result.manifest
       this.initialized = true
       this.lastReadyAt = Date.now()
+      this.resolveReady(result.manifest)
     } catch (error) {
       if (this.disposed) return
+      const bridgeError = toPythonBridgeError(error)
+      this.rejectReady(bridgeError)
       // Handshake failure (import error, crash on boot): the child typically
       // exits right after, and onChildExit owns the reconnect decision.
       if (this.child) return
       this.scheduleReconnect()
-      throw toPythonBridgeError(error)
     }
   }
 

@@ -20,6 +20,8 @@ declare module '@deepseek-ai/cordis' {
 
 A typical generated entry calls `ctx.pythonBridge.spawn({ module, className, initArgs, sandbox })` in its constructor and forwards each `@provide_method` call through `this.bridge.call('methodName', args)`.
 
+`PythonBridge.waitUntilReady()` resolves with the initial worker manifest. It rejects with `PythonBridgeError` when the initialize handshake fails or disposal starts before readiness, so plugin initialization does not poll indefinitely after an import or protocol error.
+
 ## Lifecycle
 
 `PythonBridgeService.dispose()` runs every live bridge through the teardown ladder: `shutdown` notification → stdin EOF → wait `graceMs` (default 3000) → SIGTERM → wait `graceMs` → SIGKILL, mirroring `packages/sdk/client/README.md`'s `stdin-EOF → SIGTERM → SIGKILL` model.

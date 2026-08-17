@@ -147,10 +147,7 @@ export class PythonModulePlugin {
 }
 
 async function waitForManifest(bridge: PythonBridge): Promise<PythonBridgeManifest> {
-  while (!bridge.bridgeManifest) {
-    await new Promise<void>(resolve => setImmediate(resolve))
-  }
-  return bridge.bridgeManifest
+  return bridge.waitUntilReady()
 }
 
 function normalizeObjectSchemas(schema: JsonSchemaObject, toolName: string, ctx: Context): JsonSchemaObject {

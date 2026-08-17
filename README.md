@@ -220,12 +220,12 @@ The steps are decoupled — each consumes artifacts the previous one left on dis
 ## Testing
 
 ```sh
-# One-command verification (stubs, pytest, codegen, lifecycle, real-child
-# runtime E2E, generated-package E2E; plus the REAL-composition and strict
-# typecheck tiers when a monorepo checkout and tsc are available):
+# One-command verification (12 steps: stubs, pytest, wheel install, codegen,
+# lifecycle, generic plugin, real-child and generated-package E2E, plus REAL
+# compositions and strict typecheck when a monorepo checkout and tsc exist):
 node scripts/verify.mjs
 
-# Python only: 46 tests (decorators, type inference, runtime, real-subprocess integration)
+# Python only: 49 tests (decorators, type inference, runtime, real-subprocess integration)
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # Example smoke test (no bridge required)
@@ -233,7 +233,7 @@ PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
 
-The standalone repository resolves `@deepseek-ai/*` imports through committed stubs (`tests/stubs/`, materialized by `scripts/setup-stubs.mjs`) for the offline tier; the integration tier (`scripts/setup-integration.mjs`, `tests/integration/real-composition.mjs`, `scripts/typecheck-integration.mjs`) binds the genuine monorepo sources instead. Inside the deepseek-harness monorepo, pnpm workspace resolution binds the genuine packages and the vitest suites under `packages/bridge/*/tests/` run there.
+This repository owns the three TypeScript bridge packages under `packages/bridge/`. The offline tier resolves their dependencies through committed stubs materialized by `scripts/setup-stubs.mjs`. The integration tier binds genuine monorepo dependencies while retaining this repository's bridge sources; strict `tsc -b` runs in a disposable detached monorepo worktree and leaves the monorepo checkout unchanged.
 
 ## Non-goals
 

@@ -156,8 +156,26 @@ describe('PythonBridge (mock transport)', () => {
   it('completes the initialize handshake and exposes the manifest', async () => {
     transport.respondInitialize(['embed'])
     const bridge = service.spawn({ module: 'example' }, { transport })
-    await vi.waitFor(() => expect(bridge.ready).toBe(true))
-    expect(bridge.bridgeManifest?.methods).toContain('embed')
+    const manifest = await bridge.waitUntilReady()
+    expect(bridge.ready).toBe(true)
+    expect(manifest.methods).toContain('embed')
+    expect(bridge.bridgeManifest).toBe(manifest)
+  })
+
+  it('rejects readiness when the initialize handshake fails', async () => {
+    transport.requestHandler = async () => {
+      throw new JsonRpcResponseError(-32006, 'incompatible bridge protocol', { kind: 'protocol-mismatch' })
+    }
+    const bridge = service.spawn({ module: 'example', reconnect: { enabled: false } }, { transport })
+    await expect(bridge.waitUntilReady()).rejects.toMatchObject({ kind: 'protocol-mismatch', code: -32006 })
+  })
+
+  it('rejects readiness when disposal starts before initialization completes', async () => {
+    transport.requestHandler = () => new Promise(() => undefined)
+    const bridge = service.spawn({ module: 'example' }, { transport })
+    const readiness = bridge.waitUntilReady()
+    await bridge.shutdown()
+    await expect(readiness).rejects.toMatchObject({ kind: 'bridge-down', code: -32010 })
   })
 
   it('sends clientInfo during the initialize handshake for version negotiation', async () => {

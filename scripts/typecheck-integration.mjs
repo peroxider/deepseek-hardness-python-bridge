@@ -3,9 +3,9 @@
  * Strict TypeScript check of the bridge packages against REAL monorepo
  * sources, using the monorepo's own project-references build:
  *
- *   1. Sync the two bridge packages (and a freshly generated example package)
- *      into `$DSH_MONOREPO/packages/bridge/`.
- *   2. Register their `paths` in the monorepo `tsconfig.base.json` (idempotent).
+ *   1. Create a detached temporary worktree from `$DSH_MONOREPO`.
+ *   2. Sync the bridge packages and a generated example into that worktree.
+ *   3. Register their `paths` in the temporary `tsconfig.base.json`.
  *   3. Run `tsc -b` over the three projects with the monorepo's own
  *      strict flags (typescript 6.0.3, `@types/node`, `zod`, and a js-yaml
  *      type shim are linked into the monorepo `node_modules` — all resolved
@@ -17,8 +17,9 @@
  *   DSH_MONOREPO - absolute path of the deepseek-harness checkout
  *   DSH_TSC      - absolute path of a tsc 6.x binary
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 
@@ -35,13 +36,25 @@ if (!existsSync(tsc)) {
   process.exit(1)
 }
 
-// 1. Sync the bridge packages into the monorepo tree.
+const temporaryRoot = mkdtempSync(join(tmpdir(), 'dsh-bridge-typecheck-'))
+const checkout = join(temporaryRoot, 'deepseek-harness')
+const added = spawnSync('git', ['worktree', 'add', '--detach', checkout, 'HEAD'], {
+  cwd: monorepo,
+  stdio: 'inherit',
+})
+if (added.status !== 0) {
+  rmSync(temporaryRoot, { recursive: true, force: true })
+  process.exit(added.status ?? 1)
+}
+symlinkSync(join(monorepo, 'node_modules'), join(checkout, 'node_modules'), 'dir')
+
+// Sync the bridge packages into the disposable checkout.
 for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen', 'python-bridge']) {
   for (const dir of ['src']) {
-    cpSync(join(root, 'packages/bridge', pkg, dir), join(monorepo, 'packages/bridge', pkg, dir), { recursive: true })
+    cpSync(join(root, 'packages/bridge', pkg, dir), join(checkout, 'packages/bridge', pkg, dir), { recursive: true })
   }
   for (const file of ['package.json', 'tsconfig.json']) {
-    cpSync(join(root, 'packages/bridge', pkg, file), join(monorepo, 'packages/bridge', pkg, file))
+    cpSync(join(root, 'packages/bridge', pkg, file), join(checkout, 'packages/bridge', pkg, file))
   }
 }
 
@@ -54,7 +67,7 @@ const artifacts = generateBridgePackage({
   packageName: '@my-org/python-bridge-ml',
   sources: [{ path: 'provider.py', contents: source }],
 })
-const genOut = join(monorepo, 'packages/bridge/python-bridge-ml')
+const genOut = join(checkout, 'packages/bridge/python-bridge-ml')
 for (const f of artifacts.files) {
   const p = join(genOut, f.path)
   mkdirSync(dirname(p), { recursive: true })
@@ -75,7 +88,7 @@ writeFileSync(join(genOut, 'tsconfig.json'), JSON.stringify({
 }, null, 2) + '\n')
 
 // 3. Register the bridge packages in the monorepo base paths (idempotent).
-const basePath = join(monorepo, 'tsconfig.base.json')
+const basePath = join(checkout, 'tsconfig.base.json')
 const base = readFileSync(basePath, 'utf8')
 if (!base.includes('"@deepseek-ai/dsh-python-bridge-runtime"')) {
   const anchor = '"@deepseek-ai/dsh-sdk-protocol": ["./packages/sdk/protocol/src"],'
@@ -110,7 +123,13 @@ const projects = [
   'packages/bridge/python-bridge',
   'packages/bridge/python-bridge-ml',
 ]
-const result = spawnSync(tsc, ['-b', ...projects], { cwd: monorepo, stdio: 'inherit' })
+const result = spawnSync(tsc, ['-b', ...projects], { cwd: checkout, stdio: 'inherit' })
+const removed = spawnSync('git', ['worktree', 'remove', '--force', checkout], { cwd: monorepo, stdio: 'inherit' })
+rmSync(temporaryRoot, { recursive: true, force: true })
+if (removed.status !== 0) {
+  console.error(`temporary worktree cleanup failed (exit ${removed.status})`)
+  process.exit(removed.status ?? 1)
+}
 if (result.status !== 0) {
   console.error(`strict typecheck failed (exit ${result.status})`)
   process.exit(result.status ?? 1)

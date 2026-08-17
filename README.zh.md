@@ -220,11 +220,11 @@ scripts/install-python-plugin.py \
 ## 测试
 
 ```sh
-# 一键验证（stub、pytest、codegen、生命周期、真实子进程 runtime E2E、生成包 E2E；
-# 当 monorepo 检出与 tsc 可用时还会运行 REAL-composition 与严格类型检查层）：
+# 一键验证（12 步：stub、pytest、wheel 安装、codegen、生命周期、通用插件、
+# 真实子进程与生成包 E2E；monorepo 与 tsc 可用时再运行真实组合和严格类型检查）：
 node scripts/verify.mjs
 
-# 仅 Python：46 个测试（装饰器、类型推断、运行时、真实子进程集成）
+# 仅 Python：49 个测试（装饰器、类型推断、运行时、真实子进程集成）
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # 示例 smoke test（无需 bridge）
@@ -232,7 +232,7 @@ PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
 
-独立仓库在离线层通过提交的 stub（`tests/stubs/`，由 `scripts/setup-stubs.mjs` 物化）解析 `@deepseek-ai/*` 导入；集成层（`scripts/setup-integration.mjs`、`tests/integration/real-composition.mjs`、`scripts/typecheck-integration.mjs`）则绑定真实的 monorepo 源码。在 deepseek-harness monorepo 内，pnpm workspace 解析绑定真实包，`packages/bridge/*/tests/` 下的 vitest 套件在那里运行。
+本仓 `packages/bridge/` 是三个 TypeScript bridge 包的源码归属位置。离线层通过 `scripts/setup-stubs.mjs` 物化的已提交 stub 解析依赖；集成层保留本仓 bridge 源码并绑定真实 monorepo 依赖。严格 `tsc -b` 在一次性的 detached monorepo worktree 中运行，不改动 monorepo 检出。
 
 ## 非目标
 
