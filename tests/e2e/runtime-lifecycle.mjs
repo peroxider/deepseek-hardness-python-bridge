@@ -1,5 +1,5 @@
 /**
- * Offline lifecycle checks for `@deepseek-ai/dsh-python-bridge-runtime`,
+ * Offline lifecycle checks for `@peroxidess/dsh-python-bridge-runtime`,
  * mirroring the fake-child vitest cases in
  * `packages/bridge/python-bridge-runtime/tests/bridge.spec.ts` with plain
  * assertions so they run without a package install:

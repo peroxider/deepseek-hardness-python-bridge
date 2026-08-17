@@ -66,12 +66,12 @@ python/sdk-dsl/                          dsh-bridge PyPI 包：装饰器 + 运�
   src/dsh_bridge/_errors.py                异常 → JSON-RPC code/kind 词典
   tests/                                   pytest：单元 + 真实子进程集成（49 个测试）
 packages/bridge/
-  python-bridge-runtime/                 @deepseek-ai/dsh-python-bridge-runtime
+  python-bridge-runtime/                 @peroxidess/dsh-python-bridge-runtime
     src/index.ts                           PythonBridgeService（ctx.pythonBridge）+ PythonBridge 客户端
     tests/                                 vitest：传输、错误映射、重连
-  python-bridge/                        @deepseek-ai/dsh-python-bridge
+  python-bridge/                        @peroxidess/dsh-python-bridge
     src/index.ts                           通用 manifest 驱动插件（PythonModulePlugin）
-  python-bridge-codegen/                 @deepseek-ai/dsh-python-bridge-codegen
+  python-bridge-codegen/                 @peroxidess/dsh-python-bridge-codegen
     src/index.ts                           基于 AST 的 TS 生成器（parseModuleSources / generateBridgePackage）
     bin/dsh-bridge-codegen.js              CLI 入口
     tests/                                 vitest：解析器、类型投影、输出
@@ -93,7 +93,7 @@ scripts/verify.mjs                       一键离线验证
 
 | | 通用插件（默认） | codegen（高级） |
 | --- | --- | --- |
-| 包 | `@deepseek-ai/dsh-python-bridge` | `@deepseek-ai/dsh-python-bridge-codegen` |
+| 包 | `@peroxidess/dsh-python-bridge` | `@peroxidess/dsh-python-bridge-codegen` |
 | 构建 | 无——一行 `cordis.yml` 条目 | 生成 TS 包，再 `tsc` 构建 |
 | 类型 | 动态——表面在运行时按 manifest 注册 | 静态——per-module TS 接口 + schemastery Config |
 | 配置 | `module` + `initArgs` + 通用键（`pythonBin`、`sandbox`、`pythonPath` 等） | 由 dataclass 字段映射出的 per-module camelCase 键 |
@@ -106,11 +106,11 @@ scripts/verify.mjs                       一键离线验证
 
 ### 0. 通用插件快速开始（零构建）
 
-当组合加载了 `@deepseek-ai/dsh-python-bridge-runtime` 时，一行 `cordis.yml` 条目就是完整集成——无需 codegen、无需构建：
+当组合加载了 `@peroxidess/dsh-python-bridge-runtime` 时，一行 `cordis.yml` 条目就是完整集成——无需 codegen、无需构建：
 
 ```yaml
 - id: lkb
-  name: '@deepseek-ai/dsh-python-bridge'
+  name: '@peroxidess/dsh-python-bridge'
   config:
     pythonBin: python3
     module: lkb_dsh.bridge

@@ -1,10 +1,10 @@
 /**
  * Manifest-driven Cordis plugin for Python modules decorated with `dsh_bridge`.
- * @module @deepseek-ai/dsh-python-bridge
+ * @module @peroxidess/dsh-python-bridge
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
-import type { PythonBridge, PythonBridgeManifest } from '@deepseek-ai/dsh-python-bridge-runtime'
+import type { PythonBridge, PythonBridgeManifest } from '@peroxidess/dsh-python-bridge-runtime'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { JsonValue, ParameterSchemaSpec, ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'

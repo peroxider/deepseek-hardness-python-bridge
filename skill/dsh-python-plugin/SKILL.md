@@ -5,7 +5,7 @@ description: Convert a Python module or codebase into a DeepSeek Harness (dsh) p
 
 # Convert a Python module into a dsh plugin
 
-The Python Capability Bridge lets a Python module become a first-class dsh plugin with zero changes to business code. This skill drives the conversion end to end. Two paths load the same decorated module: the **generic plugin** (`@deepseek-ai/dsh-python-bridge`) needs no codegen and no build — one `cordis.yml` entry is the whole integration; the **codegen** path builds a self-contained TypeScript package with static per-module types. Start with the generic path (Step 2a); fall back to codegen when the install cannot resolve the bridge packages as source or you want typed TS surfaces (Step 2b).
+The Python Capability Bridge lets a Python module become a first-class dsh plugin with zero changes to business code. This skill drives the conversion end to end. Two paths load the same decorated module: the **generic plugin** (`@peroxidess/dsh-python-bridge`) needs no codegen and no build — one `cordis.yml` entry is the whole integration; the **codegen** path builds a self-contained TypeScript package with static per-module types. Start with the generic path (Step 2a); fall back to codegen when the install cannot resolve the bridge packages as source or you want typed TS surfaces (Step 2b).
 
 The codegen pipeline:
 
@@ -53,11 +53,11 @@ Read `references/decorators.md` for the full decorator contract, and `references
 
 ### Step 2a — Generic path (zero-build, default)
 
-When the dsh install can resolve `@deepseek-ai/dsh-python-bridge` and the runtime (source launch, or an install that ships them), one `cordis.patch.yml` entry is the whole integration — no codegen, no `tsc`:
+When the dsh install can resolve `@peroxidess/dsh-python-bridge` and the runtime (source launch, or an install that ships them), one `cordis.patch.yml` entry is the whole integration — no codegen, no `tsc`:
 
 ```yaml
 - id: <short>
-  name: '@deepseek-ai/dsh-python-bridge'
+  name: '@peroxidess/dsh-python-bridge'
   config:
     pythonBin: python3
     module: <pkg>_dsh.bridge

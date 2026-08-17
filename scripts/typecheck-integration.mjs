@@ -90,7 +90,7 @@ writeFileSync(join(genOut, 'tsconfig.json'), JSON.stringify({
 // 3. Register the bridge packages in the monorepo base paths (idempotent).
 const basePath = join(checkout, 'tsconfig.base.json')
 const base = readFileSync(basePath, 'utf8')
-if (!base.includes('"@deepseek-ai/dsh-python-bridge-runtime"')) {
+if (!base.includes('"@peroxidess/dsh-python-bridge-runtime"')) {
   const anchor = '"@deepseek-ai/dsh-sdk-protocol": ["./packages/sdk/protocol/src"],'
   if (!base.includes(anchor)) {
     console.error('tsconfig.base.json paths anchor not found; register the bridge packages manually')
@@ -98,20 +98,20 @@ if (!base.includes('"@deepseek-ai/dsh-python-bridge-runtime"')) {
   }
   writeFileSync(basePath, base.replace(
     anchor,
-    `${anchor}\n      "@deepseek-ai/dsh-python-bridge-runtime": ["./packages/bridge/python-bridge-runtime/src"],\n      "@deepseek-ai/dsh-python-bridge-codegen": ["./packages/bridge/python-bridge-codegen/src"],`,
+    `${anchor}\n      "@peroxidess/dsh-python-bridge-runtime": ["./packages/bridge/python-bridge-runtime/src"],\n      "@peroxidess/dsh-python-bridge-codegen": ["./packages/bridge/python-bridge-codegen/src"],`,
   ))
   console.log('registered bridge packages in monorepo tsconfig.base.json paths')
 }
 const baseWithRuntime = readFileSync(basePath, 'utf8')
-if (!baseWithRuntime.includes('"@deepseek-ai/dsh-python-bridge"')) {
-  const anchor = '"@deepseek-ai/dsh-python-bridge-codegen": ["./packages/bridge/python-bridge-codegen/src"],'
+if (!baseWithRuntime.includes('"@peroxidess/dsh-python-bridge"')) {
+  const anchor = '"@peroxidess/dsh-python-bridge-codegen": ["./packages/bridge/python-bridge-codegen/src"],'
   if (!baseWithRuntime.includes(anchor)) {
     console.error('python bridge codegen path anchor not found')
     process.exit(1)
   }
   writeFileSync(basePath, baseWithRuntime.replace(
     anchor,
-    `${anchor}\n      "@deepseek-ai/dsh-python-bridge": ["./packages/bridge/python-bridge/src"],`,
+    `${anchor}\n      "@peroxidess/dsh-python-bridge": ["./packages/bridge/python-bridge/src"],`,
   ))
   console.log('registered generic bridge package in monorepo tsconfig.base.json paths')
 }

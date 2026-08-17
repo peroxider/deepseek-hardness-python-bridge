@@ -34,7 +34,7 @@
 ## 里程碑 M1 — 通用声明式 bridge 插件（核心）
 
 > 让一行 cordis.yml 配置直接成为插件，无需 per-module codegen。
-> 目标产物：`@deepseek-ai/dsh-python-bridge`（新包，`packages/bridge/python-bridge/`）。
+> 目标产物：`@peroxidess/dsh-python-bridge`（新包，`packages/bridge/python-bridge/`）。
 
 ### M1.1 manifest 扩充（Python 运行时）
 
@@ -144,15 +144,15 @@
 ### M4.1 runtime 进入 dsh-base（首选）或独立发布
 
 - [x] **任务**：评估两条路径并落地其一：
-  (a) `@deepseek-ai/dsh-python-bridge-runtime` + 通用插件（M1）加入 monorepo 的
+  (a) `@peroxidess/dsh-python-bridge-runtime` + 通用插件（M1）加入 monorepo 的
       `@deepseek-ai/dsh-base` bundle 依赖，使每个 dsh 安装自带 `ctx.pythonBridge`；
   (b) 独立 npm 发布（profile 侧 `pnpm add` 解析）。
-- [x] **验收**：全新 dsh 安装中 cordis.yml 以裸名 `@deepseek-ai/dsh-python-bridge`
+- [x] **验收**：全新 dsh 安装中 cordis.yml 以裸名 `@peroxidess/dsh-python-bridge`
   挂载成功，无 file:// 组装。
 
 ### M4.2 codegen bin 发布
 
-- [x] **任务**：`@deepseek-ai/dsh-python-bridge-codegen` 可 `pnpm dlx` 执行；
+- [x] **任务**：`@peroxidess/dsh-python-bridge-codegen` 可 `pnpm dlx` 执行；
   bin 入口兼容源码直跑与构建产物。
 
 ### M4.3 源码归属

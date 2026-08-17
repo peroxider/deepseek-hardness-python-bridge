@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-python-bridge-runtime`.
- * @module @deepseek-ai/dsh-python-bridge-runtime/invariant
+ * Package-owned invariant companion for `@peroxidess/dsh-python-bridge-runtime`.
+ * @module @peroxidess/dsh-python-bridge-runtime/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-python-bridge-runtime'
+const PACKAGE_NAME = '@peroxidess/dsh-python-bridge-runtime'
 
 /** Cordis companion plugin name. */
 export const name = 'python-bridge-runtime-invariant'

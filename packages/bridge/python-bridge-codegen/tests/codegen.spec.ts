@@ -1,5 +1,5 @@
 /**
- * Vitest coverage for `@deepseek-ai/dsh-python-bridge-codegen`.
+ * Vitest coverage for `@peroxidess/dsh-python-bridge-codegen`.
  *
  * The codegen is exercised through the library API; the CLI is a thin
  * wrapper that calls into the same code paths.
@@ -156,8 +156,8 @@ describe('generateBridgePackage (service-class form)', () => {
   it('imports every runtime dependency the emitted code uses', () => {
     expect(index.contents).toContain(`import z from '@deepseek-ai/schemastery'`)
     expect(index.contents).toContain(`import { defineTool } from '@deepseek-ai/dsh-tools'`)
-    expect(index.contents).toContain(`from '@deepseek-ai/dsh-python-bridge-runtime'`)
-    expect(pkg.dependencies['@deepseek-ai/dsh-python-bridge-runtime']).toBeDefined()
+    expect(index.contents).toContain(`from '@peroxidess/dsh-python-bridge-runtime'`)
+    expect(pkg.dependencies['@peroxidess/dsh-python-bridge-runtime']).toBeDefined()
     expect(pkg.dependencies['@deepseek-ai/dsh-tools']).toBeDefined()
     expect(pkg.dependencies['@deepseek-ai/schemastery']).toBeDefined()
   })

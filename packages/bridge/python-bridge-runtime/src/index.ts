@@ -12,7 +12,7 @@
  * `scrubbedParentEnv()`; the teardown ladder is `shutdown` notification →
  * stdin EOF → SIGTERM → grace → SIGKILL, mirroring the SDK client README.
  *
- * @module @deepseek-ai/dsh-python-bridge-runtime
+ * @module @peroxidess/dsh-python-bridge-runtime
  */
 
 import { spawn as spawnChildProcess, spawnSync } from 'node:child_process'

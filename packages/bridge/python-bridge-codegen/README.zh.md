@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-python-bridge-codegen
+# @peroxidess/dsh-python-bridge-codegen
 
 [English](README.md) | 中文
 
-Python Capability Bridge 的基于 AST 的 TypeScript 生成器。读取一个或多个 Python 源文件，扫描 `dsh_bridge` 装饰器调用，并产出符合 [`@deepseek-ai/dsh-python-bridge-runtime`](../python-bridge-runtime/README.md) 规范的 TypeScript bridge 包。生成器不执行用户源码，仅做静态扫描并生成产物。
+Python Capability Bridge 的基于 AST 的 TypeScript 生成器。读取一个或多个 Python 源文件，扫描 `dsh_bridge` 装饰器调用，并产出符合 [`@peroxidess/dsh-python-bridge-runtime`](../python-bridge-runtime/README.md) 规范的 TypeScript bridge 包。生成器不执行用户源码，仅做静态扫描并生成产物。
 
 ## 用法
 
@@ -16,14 +16,14 @@ CLI 将诊断信息（装饰错误及其文件/行号）输出到 stderr，发�
 
 生成器产出：
 
-- `package.json` —— Cordis peer 依赖 + `@deepseek-ai/dsh-python-bridge-runtime` 运行时依赖。
+- `package.json` —— Cordis peer 依赖 + `@peroxidess/dsh-python-bridge-runtime` 运行时依赖。
 - `src/index.ts` —— `Service` 子类（包含 `static Config` schemastery 模式）以及用于 tool consumer / listener 的 `apply()` 函数。
 - `src/diagnostics.ts` —— 当发现装饰错误时产出。
 
 ## 公共库
 
 ```ts
-import { generateBridgePackage, parseModuleSources, pythonTypeToTs } from '@deepseek-ai/dsh-python-bridge-codegen'
+import { generateBridgePackage, parseModuleSources, pythonTypeToTs } from '@peroxidess/dsh-python-bridge-codegen'
 
 const parsed = parseModuleSources([
   { path: 'provider.py', contents: sourceText },

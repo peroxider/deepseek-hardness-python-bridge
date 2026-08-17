@@ -20,7 +20,7 @@ Two ways mount the same decorated module. **Start with the generic plugin** — 
 
 ```yaml
 - id: ml
-  name: '@deepseek-ai/dsh-python-bridge'
+  name: '@peroxidess/dsh-python-bridge'
   config:
     pythonBin: python
     module: my_ml.provider
@@ -33,7 +33,7 @@ The rest of this guide walks the **codegen** path, which produces a self-contain
 
 | | Generic plugin | codegen |
 | --- | --- | --- |
-| Package | `@deepseek-ai/dsh-python-bridge` | your generated package |
+| Package | `@peroxidess/dsh-python-bridge` | your generated package |
 | Build | none | `pnpm dsh-bridge-codegen` + `tsc` |
 | Config | `module` + `initArgs` + generic keys | camelCase dataclass-field keys |
 | Types | dynamic (runtime manifest) | static per-module TS |
@@ -134,7 +134,7 @@ This prints the bridge registry contents and runs one method to validate the wir
 ```ts
 // auto-generated python-bridge-ml/src/index.ts
 import { Context, Service, z } from '@deepseek-ai/cordis'
-import { PythonBridgeService, type PythonBridge } from '@deepseek-ai/dsh-python-bridge-runtime'
+import { PythonBridgeService, type PythonBridge } from '@peroxidess/dsh-python-bridge-runtime'
 
 declare module '@deepseek-ai/cordis' {
   interface Context { pythonBridge: PythonBridgeService }

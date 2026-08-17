@@ -2,7 +2,7 @@
 
 [English](protocol.md) | 中文
 
-本文定义 `@deepseek-ai/dsh-python-bridge-runtime` 与 Python `dsh-bridge` runtime 之间的兼容承诺。传输使用 stdio 上以换行分隔的 JSON-RPC 2.0。协议版本的 major 分量相同时兼容；major 不同时，`initialize` 以 `protocol-mismatch`（`-32006`）拒绝连接。
+本文定义 `@peroxidess/dsh-python-bridge-runtime` 与 Python `dsh-bridge` runtime 之间的兼容承诺。传输使用 stdio 上以换行分隔的 JSON-RPC 2.0。协议版本的 major 分量相同时兼容；major 不同时，`initialize` 以 `protocol-mismatch`（`-32006`）拒绝连接。
 
 ## 版本握手
 

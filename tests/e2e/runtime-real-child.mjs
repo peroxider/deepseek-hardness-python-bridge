@@ -1,5 +1,5 @@
 /**
- * Real-child end-to-end check for `@deepseek-ai/dsh-python-bridge-runtime`:
+ * Real-child end-to-end check for `@peroxidess/dsh-python-bridge-runtime`:
  * spawns an actual `python3 -u -m dsh_bridge.runtime` child against the
  * bundled `examples/python-bridge-ml` provider and drives it through the
  * initialize → call → error → event/log → shutdown ladder.
