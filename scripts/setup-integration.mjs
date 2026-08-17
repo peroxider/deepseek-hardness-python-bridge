@@ -19,10 +19,13 @@
  * symlink for a REAL_PACKAGES name) and lets Node's upward walk reach the
  * wrappers at `$DSH_MONOREPO/node_modules`.
  *
- * Wrappers are written to two resolution roots:
+ * Wrappers are written to three resolution roots:
  *   1. `.gen/integration/node_modules` — app code + explicit test imports
  *   2. `$DSH_MONOREPO/node_modules` — real monorepo sources import each other
  *      by package name; Node resolves those by walking up that tree
+ *   3. `packages/bridge/<pkg>/node_modules` — symlinks to (1), so the bridge
+ *      packages' own imports bind the REAL packages, not the offline stubs
+ *      at the repository root
  *
  *   node scripts/setup-integration.mjs
  *   node --experimental-transform-types tests/integration/real-composition.mjs
@@ -77,9 +80,8 @@ const REAL_PACKAGES = {
   '@deepseek-ai/dsh-session': `${monorepo}/packages/core/session/src/index.ts`,
   '@deepseek-ai/dsh-timeout': `${monorepo}/packages/util/timeout/src/index.ts`,
   '@deepseek-ai/dsh-invariants': `${monorepo}/packages/runtime-diagnostics/invariants/src/index.ts`,
-  '@deepseek-ai/dsh-python-bridge-runtime': `${monorepo}/packages/bridge/python-bridge-runtime/src/index.ts`,
-  '@deepseek-ai/dsh-python-bridge': `${monorepo}/packages/bridge/python-bridge/src/index.ts`,
-  '@deepseek-ai/dsh-python-bridge-codegen': `${monorepo}/packages/bridge/python-bridge-codegen/src/index.ts`,
+  '@deepseek-ai/dsh-python-bridge-runtime': `${root}/packages/bridge/python-bridge-runtime/src/index.ts`,
+  '@deepseek-ai/dsh-python-bridge': `${root}/packages/bridge/python-bridge/src/index.ts`,
 }
 
 /** Packages whose default export the wrappers must re-export. */
@@ -208,6 +210,14 @@ populateNodeModules(join(out, 'node_modules'))
 
 // 2. The monorepo root: real sources import one another by package name.
 populateNodeModules(join(monorepo, 'node_modules'))
+
+// 3. The bridge repo's own packages: their bare imports must hit the REAL
+//    wrappers during integration runs, not the offline stubs at repo root.
+for (const pkg of ['python-bridge-runtime', 'python-bridge-codegen', 'python-bridge']) {
+  const link = join(root, 'packages/bridge', pkg, 'node_modules')
+  rmSync(link, { recursive: true, force: true })
+  symlinkSync(join(out, 'node_modules'), link, 'dir')
+}
 
 console.log(`integration harness ready at ${out}`)
 console.log(`  monorepo node_modules: ${join(monorepo, 'node_modules')}`)

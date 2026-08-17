@@ -119,7 +119,7 @@ RUNTIME_LINKS = [
 # dsh install does not ship them. Maps package name → source directory.
 def bundled_packages(monorepo: Path) -> dict[str, Path]:
     return {
-        "@deepseek-ai/dsh-python-bridge-runtime": monorepo / "packages/bridge/python-bridge-runtime",
+        "@deepseek-ai/dsh-python-bridge-runtime": REPO_ROOT / "packages/bridge/python-bridge-runtime",
         "@deepseek-ai/dsh-sdk-protocol": monorepo / "packages/sdk/protocol",
     }
 

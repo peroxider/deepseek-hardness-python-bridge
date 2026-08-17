@@ -1,6 +1,6 @@
 /** Offline behavior check for the manifest-driven generic plugin. */
 import { Context, Service } from '@deepseek-ai/cordis'
-import PythonModulePlugin from '@deepseek-ai/dsh-python-bridge'
+import PythonModulePlugin from '../../packages/bridge/python-bridge/src/index.ts'
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)

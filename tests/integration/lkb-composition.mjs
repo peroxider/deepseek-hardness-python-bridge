@@ -58,7 +58,7 @@ rmSync(app, { recursive: true, force: true })
 mkdirSync(app, { recursive: true })
 if (!generic) {
   const { generateBridgePackage } = await import(
-    '@deepseek-ai/dsh-python-bridge-codegen'
+    join(root, 'packages/bridge/python-bridge-codegen/src/index.ts')
   )
   const source = readFileSync(join(lkbSrc, 'lkb_dsh/bridge.py'), 'utf8')
   const artifacts = generateBridgePackage({

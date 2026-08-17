@@ -50,7 +50,7 @@ function real(name) {
 // ---------------------------------------------------------------------------
 
 const { generateBridgePackage } = await import(
-  '@deepseek-ai/dsh-python-bridge-codegen'
+  join(root, 'packages/bridge/python-bridge-codegen/src/index.ts')
 )
 const source = readFileSync(join(root, 'examples/python-bridge-ml/provider.py'), 'utf8')
 const artifacts = generateBridgePackage({

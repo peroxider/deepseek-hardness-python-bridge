@@ -9,6 +9,6 @@
  * The codegen imports only node builtins, so no stub/workspace resolution is
  * needed here.
  */
-import { runCli } from '@deepseek-ai/dsh-python-bridge-codegen'
+import { runCli } from '../packages/bridge/python-bridge-codegen/src/index.ts'
 
 process.exit(runCli(process.argv.slice(2)))

@@ -9,11 +9,14 @@
  *   2. Python test suite (pytest; requires pytest on PATH)
  *   3. Isolated wheel install and import
  *   4. Codegen source checks
- *   5. Monorepo runtime, bundle, and CLI unit tests
- *   6. Integration harness setup
- *   7. Generated-package real composition
- *   8. Generic LKB real composition
- *   9. Strict monorepo bridge typecheck
+ *   5. Runtime lifecycle checks
+ *   6. Generic-plugin checks
+ *   7. Real-child runtime E2E
+ *   8. Generated-package E2E
+ *   9. Integration harness setup
+ *   10. Generated-package real composition
+ *   11. Generic LKB real composition
+ *   12. Strict bridge typecheck against the monorepo contracts
  *
  * Exits non-zero when any step fails.
  */
@@ -30,6 +33,10 @@ const steps = [
   ['python test suite', python, ['-m', 'pytest', 'tests/'], { cwd: join(root, 'python/sdk-dsl'), env: { ...process.env, PYTHONPATH: 'src' } }],
   ['wheel isolated install and import', python, ['scripts/verify-wheel.py']],
   ['codegen mirror checks', 'node', ['--experimental-transform-types', 'tests/e2e/codegen-mirror.mjs']],
+  ['runtime lifecycle checks', 'node', ['--experimental-transform-types', 'tests/e2e/runtime-lifecycle.mjs']],
+  ['generic plugin checks', 'node', ['--experimental-transform-types', 'tests/e2e/generic-plugin.mjs']],
+  ['runtime real-child E2E', 'node', ['--experimental-transform-types', 'tests/e2e/runtime-real-child.mjs']],
+  ['generated-package E2E', 'node', ['--experimental-transform-types', 'tests/e2e/generated-package.mjs']],
 ]
 
 let failed = 0
@@ -54,12 +61,6 @@ const monorepo = process.env.DSH_MONOREPO ?? '/home/chad/workspace/deepseek-harn
 const tsc = process.env.DSH_TSC ?? '/tmp/dsh-externals/manual/typescript-6.0.3/package/bin/tsc'
 if (existsSync(join(monorepo, 'vendor/cordis/src/index.ts')) && existsSync(tsc)) {
   const integrationSteps = [
-    ['monorepo bridge release unit tests', 'pnpm', [
-      'exec', 'vitest', 'run',
-      'packages/bridge/python-bridge-runtime/tests/bridge.spec.ts',
-      'packages/bundle/base/tests/base.spec.ts',
-      'apps/cli/tests/python-plugin-install.spec.ts',
-    ], { cwd: monorepo }],
     ['integration harness setup', 'node', ['scripts/setup-integration.mjs']],
     ['REAL-composition (real Loader + real schemastery + real ToolRuntime)', 'node', ['--experimental-transform-types', 'tests/integration/real-composition.mjs']],
     ['generic LKB composition (no codegen)', 'node', ['--experimental-transform-types', 'tests/integration/generic-plugin.mjs']],

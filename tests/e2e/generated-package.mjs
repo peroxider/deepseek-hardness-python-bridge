@@ -11,8 +11,8 @@
  *   node scripts/setup-stubs.mjs   # once per clone
  *   node --experimental-strip-types tests/e2e/generated-package.mjs
  */
-import { generateBridgePackage } from '@deepseek-ai/dsh-python-bridge-codegen'
-import { PythonBridgeService } from '@deepseek-ai/dsh-python-bridge-runtime'
+import { generateBridgePackage } from '../../packages/bridge/python-bridge-codegen/src/index.ts'
+import { PythonBridgeService } from '../../packages/bridge/python-bridge-runtime/src/index.ts'
 import { Context } from '@deepseek-ai/cordis'
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { delimiter, dirname, join } from 'node:path'

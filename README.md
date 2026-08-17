@@ -53,8 +53,8 @@ Remaining limits, honestly stated:
 
 - **"Any Python module" means the constrained decorator shape** — keyword-argument decorators with one leading positional name (`@service(name='ml', ...)`). Qualified calls (`@dsh_bridge.service(...)`), import aliases (`from dsh_bridge import service as svc`), and non-keyword arguments are silently ignored by the regex-based parser. Only the first `@service` class per module is emitted; non-dataclass `__init__` parameters are not introspected.
 - **`@capability` / `@guard` / `@restrict_tools` / `@system_prompt_section` are parsed but not emitted** — they produce no generated code yet.
-- **The TypeScript package vitest suites run in deepseek-harness**; their assertions are also mirrored by the plain-Node E2E scripts in `tests/e2e/` for this repository's cross-repository acceptance tier.
-- **deepseek-harness owns all bridge TypeScript packages** — set `DSH_MONOREPO` when its checkout is not at `/home/chad/workspace/deepseek-harness`.
+- **The vitest suites under `packages/bridge/*/tests/` have not run in this environment** (vitest's own dependency closure is unavailable offline); their assertions are mirrored by the plain-Node E2E scripts in `tests/e2e/` and run for real inside the monorepo.
+- **Monorepo integration is verified, not merged** — the deepseek-harness checkout holds the bridge packages plus a `tsconfig.base.json` paths registration as uncommitted working-tree changes from the verification run.
 
 ## Repository layout
 
@@ -65,7 +65,16 @@ python/sdk-dsl/                          dsh-bridge PyPI package: decorators + r
   src/dsh_bridge/_type_inference.py        PEP 484 → JSON Schema inference
   src/dsh_bridge/_errors.py                exception → JSON-RPC code/kind vocabulary
   tests/                                   pytest: unit + real-subprocess integration (49 tests)
-deepseek-harness/packages/bridge/        Sole source for the runtime, generic plugin, and codegen TypeScript packages
+packages/bridge/
+  python-bridge-runtime/                 @deepseek-ai/dsh-python-bridge-runtime
+    src/index.ts                           PythonBridgeService (ctx.pythonBridge) + PythonBridge client
+    tests/                                 vitest: transport, error mapping, reconnect
+  python-bridge/                        @deepseek-ai/dsh-python-bridge
+    src/index.ts                           Generic manifest-driven plugin (PythonModulePlugin)
+  python-bridge-codegen/                 @deepseek-ai/dsh-python-bridge-codegen
+    src/index.ts                           AST-driven TS generator (parseModuleSources / generateBridgePackage)
+    bin/dsh-bridge-codegen.js              CLI entry point
+    tests/                                 vitest: parser, type projection, emitter
 examples/python-bridge-ml/               Runnable Service Provider + tool + listeners snapshot
 docs/cookbook/adding-a-python-bridge.md  Step-by-step user guide (EN/ZH)
 docs/guides/human-engineer.md            Human engineer usage guide (EN/ZH)
@@ -224,7 +233,7 @@ PYTHONPATH=examples/python-bridge-ml:python/sdk-dsl/src \
   python3 examples/python-bridge-ml/provider.py
 ```
 
-The standalone repository resolves non-bridge `@deepseek-ai/*` imports through committed stubs (`tests/stubs/`, materialized by `scripts/setup-stubs.mjs`) for the offline tier. Bridge package wrappers always target the deepseek-harness checkout selected by `DSH_MONOREPO`; the integration and strict-typecheck tiers use that same source directly. This keeps Python-facing acceptance here without maintaining a second TypeScript package copy.
+The standalone repository resolves `@deepseek-ai/*` imports through committed stubs (`tests/stubs/`, materialized by `scripts/setup-stubs.mjs`) for the offline tier; the integration tier (`scripts/setup-integration.mjs`, `tests/integration/real-composition.mjs`, `scripts/typecheck-integration.mjs`) binds the genuine monorepo sources instead. Inside the deepseek-harness monorepo, pnpm workspace resolution binds the genuine packages and the vitest suites under `packages/bridge/*/tests/` run there.
 
 ## Non-goals
 

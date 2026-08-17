@@ -20,7 +20,7 @@ import {
   PythonBridgeService,
   PythonBridgeError,
   toPythonBridgeError,
-} from '@deepseek-ai/dsh-python-bridge-runtime'
+} from '../../packages/bridge/python-bridge-runtime/src/index.ts'
 import { Context } from '@deepseek-ai/cordis'
 
 let failures = 0
