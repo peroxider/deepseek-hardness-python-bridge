@@ -1,0 +1,32 @@
+python/sdk-dsl/pyproject.toml
+  s_86aed8fa1ab2c3::t_d1faa88e81beb2 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "85f4904daf6f0927cf93148ad6dcd7dae93a6519",
+  "prompts": {},
+  "sessions": {
+    "s_86aed8fa1ab2c3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fbdfd67cc072c849c6638",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "source_scene": "agent",
+        "external_session_id": "6a7fbdfd67cc072c849c6638",
+        "tool_use_id": "6a828ac067cc072c849cbee3",
+        "tool_type": "builtin",
+        "session_id": "6a7fbdfd67cc072c849c6638",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "runtime_client": "trae-tob-git-ai",
+        "client_type": "ide",
+        "edit_kind": "file_edit",
+        "dedupe_key": "6a7fbdfd67cc072c849c6638:6a828ac067cc072c849cbee3:afterEdit:18e5262c",
+        "operation_id": "6a828ac067cc072c849cbee3"
+      }
+    }
+  }
+}
