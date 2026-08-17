@@ -13,11 +13,10 @@ Wire method names:
   name, e.g. `embed`).
 - `<tool>` — synchronous call to a `@tool`-decorated function (the bare tool
   name, e.g. `resize_image`).
-- `shutdown` — request graceful exit.
 - Notifications from TS to Python:
-    - `event/subscribe` — register an event stream; subsequent `event/deliver`
-      notifications carry Cordis event payloads that the Python side routes
-      into the matching `@on`-decorated listener.
+    - `shutdown` — begin graceful exit.
+    - `event/deliver` — carry Cordis event payloads that the Python side routes
+      into matching `@on`-decorated listeners.
     - `log/notify` — diagnostics the TypeScript side pushes into Python's logger.
 - Notifications from Python to TS:
     - `bridge/log` — Python logging routed back to dsh's logger.

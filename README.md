@@ -22,6 +22,7 @@ Two usage guides cover the same workflow from different operator perspectives, b
 | Human Engineer Guide | A person at a terminal | [`docs/guides/human-engineer.md`](docs/guides/human-engineer.md) |
 | Agent-friendly Guide | An AI coding agent (uses the `dsh-python-plugin` skill) | [`docs/guides/agent-friendly.md`](docs/guides/agent-friendly.md) |
 | Step-by-step cookbook | Both (full walkthrough) | [`docs/cookbook/adding-a-python-bridge.md`](docs/cookbook/adding-a-python-bridge.md) |
+| Wire protocol stability | Runtime and integration maintainers | [`docs/protocol.md`](docs/protocol.md) |
 | Standard skill | Agent runtimes with skill loading | [`skill/dsh-python-plugin/SKILL.md`](skill/dsh-python-plugin/SKILL.md) |
 
 ## What it does
@@ -43,7 +44,7 @@ DeepSeek Harness's plugin surface is TypeScript-only. This bridge is the path th
 
 The premise is proven by four verification tiers, all reproducible offline via `node scripts/verify.mjs`:
 
-1. **Python suite** — 46 pytest tests covering decorators, PEP 484 type inference, the JSON-RPC runtime, real-subprocess integration over stdio, and the enriched `initialize` manifest (tool schemas, method annotations, service init fields, listener function names).
+1. **Python suite** — 49 pytest tests covering decorators, PEP 484 type inference, the JSON-RPC runtime, real-subprocess integration over stdio, version negotiation, and the enriched `initialize` manifest (tool schemas, method annotations, service init fields, listener function names).
 2. **Offline TypeScript E2E** — plain-Node assertions (no package install) covering codegen emission (55+ assertions), runtime lifecycle (worker-exit, reconnect, teardown ladder, env scrub), a real `python3` child round-trip, the generic plugin mounting on a stub Cordis context, and a generated package mounted on the same stub.
 3. **REAL-composition** — a test `cordis.yml` booted through the genuine vendored Cordis Loader (`vendor/loader` + `vendor/include`), with real schemastery applying the generated `static Config`, the real `ToolRuntime` holding the registered tool, a real `ctx.emit('session/event')` reaching the Python listener, and `ctx.fiber.dispose()` tearing the child down through the effect disposers. Both the generic plugin and the codegen path drive the same external LKB example end-to-end through the real ToolRuntime.
 4. **Strict typecheck** — `tsc -b` (typescript 6.0.3, monorepo `tsconfig.base.json` flags: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) over the three bridge packages and a generated example package inside the monorepo's project-reference graph: zero errors.
@@ -63,7 +64,7 @@ python/sdk-dsl/                          dsh-bridge PyPI package: decorators + r
   src/dsh_bridge/runtime.py                python -u -m dsh_bridge.runtime <module> entry point
   src/dsh_bridge/_type_inference.py        PEP 484 → JSON Schema inference
   src/dsh_bridge/_errors.py                exception → JSON-RPC code/kind vocabulary
-  tests/                                   pytest: unit + real-subprocess integration (43 tests)
+  tests/                                   pytest: unit + real-subprocess integration (49 tests)
 packages/bridge/
   python-bridge-runtime/                 @deepseek-ai/dsh-python-bridge-runtime
     src/index.ts                           PythonBridgeService (ctx.pythonBridge) + PythonBridge client

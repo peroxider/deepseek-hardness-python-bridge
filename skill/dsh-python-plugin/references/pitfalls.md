@@ -70,6 +70,8 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 **Cause**: the installed `dsh-bridge` (Python runtime) and the TypeScript bridge disagree on the wire protocol's major version. The runtime rejects a client whose major differs from its own `serverInfo.version` major.
 **Fix**: align versions — `pip install dsh-bridge` a release matching the TypeScript bridge's major (both are major 0 today), or update the TypeScript bridge. Never mix majors.
 
+When extending the wire, follow [`docs/protocol.md`](../../../docs/protocol.md): same-major manifest and request changes are optional and additive; removals, renames, type changes, or new required behavior need a coordinated major bump.
+
 ## Plugin changes do not take effect
 
 **Cause**: the running instance holds the old artifacts in memory.

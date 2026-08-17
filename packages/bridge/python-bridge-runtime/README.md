@@ -36,6 +36,8 @@ Before spawning, the bridge verifies the interpreter can import the bridge runti
 
 The `initialize` handshake carries `clientInfo: { name, version }` (`PYTHON_BRIDGE_CLIENT_NAME` / `PYTHON_BRIDGE_CLIENT_VERSION`). The Python runtime accepts the handshake when the client version's major matches its own `serverInfo.version` major, and rejects it with `protocol-mismatch` (`-32006`) and a readable message otherwise. Keep the two majors in lockstep when releasing.
 
+The [wire protocol stability reference](../../../docs/protocol.md) owns the fixed method set, error-kind dictionary, and additive manifest evolution rules.
+
 ## Reconnect
 
 An unexpected child exit respawns the interpreter with exponential backoff (spec §6.7). `PythonBridge.spawn()` accepts a `reconnect` block:
@@ -88,5 +90,4 @@ None; the bridge is a transport.
 
 - **Sandbox confinement requires the optional seam** — without `dsh-sandbox` loaded the `sandbox` field is advisory only.
 - **No in-process CPython embedding** by design; this is a process-management seam, not a runtime. Pyodide-based low-latency paths are tracked separately (see `packages/core/tools/README.md:27`).
-- **No protocol-version negotiation** — pre-release stance, no compatibility promise.
 - **Listener notification queueing during reconnect is unimplemented** — spec §6.7's 1 MiB per-event-type queue is deferred; notifications raised while the child is down are dropped.
