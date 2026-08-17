@@ -1,0 +1,19 @@
+python/sdk-dsl/README.md
+  s_11de2233c80156::t_2b7fc64209de1f 1,10,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "00235cc82c0154f9ced07a15e328baae5e69de10",
+  "prompts": {},
+  "sessions": {
+    "s_11de2233c80156": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7de4c6513ef57dfc7eef00",
+        "model": "deepseek_v4_flash_official__max"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>"
+    }
+  }
+}
