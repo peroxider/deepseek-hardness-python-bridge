@@ -1,0 +1,36 @@
+python/sdk-dsl/README.md
+  s_86aed8fa1ab2c3::t_743799783f02bc 55-65
+.github/workflows/publish-pypi.yml
+  s_86aed8fa1ab2c3::t_89c292fa18066f 1-93
+TODO.md
+  s_86aed8fa1ab2c3::t_18081cb85e22c4 136,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "9fc42239fd0e5ea18a67d8dbb2fae6edef8c7ecf",
+  "prompts": {},
+  "sessions": {
+    "s_86aed8fa1ab2c3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fbdfd67cc072c849c6638",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "runtime_client": "trae-tob-git-ai",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "tool_type": "builtin",
+        "session_id": "6a7fbdfd67cc072c849c6638",
+        "client_type": "ide",
+        "dedupe_key": "6a7fbdfd67cc072c849c6638:6a82a3ba67cc072c849cc1a4:afterEdit:18e5262c",
+        "edit_kind": "file_edit",
+        "operation_id": "6a82a3ba67cc072c849cc1a4",
+        "tool_use_id": "6a82a3ba67cc072c849cc1a4",
+        "source_scene": "agent",
+        "external_session_id": "6a7fbdfd67cc072c849c6638"
+      }
+    }
+  }
+}
