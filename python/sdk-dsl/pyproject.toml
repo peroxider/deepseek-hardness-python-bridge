@@ -4,13 +4,40 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dsh-bridge"
-version = "0.0.0.dev0"
+# Version is single-sourced from `src/dsh_bridge/__init__.py` (`__version__`)
+# so the wheel, PyPI listing, and the runtime's initialize handshake never drift.
+dynamic = ["version"]
 description = "Python decorator library and runtime that exposes a Python module as a Cordis Service / Event listener / capability Provider through the DeepSeek Harness Python Capability Bridge"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "DeepSeek" }]
+keywords = [
+  "deepseek",
+  "deepseek-harness",
+  "cordis",
+  "plugin",
+  "agent",
+  "bridge",
+  "json-rpc",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = []
+
+[project.entry-points]
+console_scripts = ["dsh-bridge-runtime = dsh_bridge.runtime:main"]
 
 [project.urls]
 Homepage = "https://github.com/deepseek-ai/deepseek-harness"
@@ -24,6 +51,9 @@ test = ["pytest>=8.0"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+
+[tool.hatch.version]
+path = "src/dsh_bridge/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dsh_bridge"]
