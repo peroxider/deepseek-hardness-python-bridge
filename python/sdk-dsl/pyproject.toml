@@ -36,8 +36,8 @@ classifiers = [
 ]
 dependencies = []
 
-[project.entry-points]
-console_scripts = ["dsh-bridge-runtime = dsh_bridge.runtime:main"]
+[project.scripts]
+dsh-bridge-runtime = "dsh_bridge.runtime:main"
 
 [project.urls]
 Homepage = "https://github.com/deepseek-ai/deepseek-harness"
