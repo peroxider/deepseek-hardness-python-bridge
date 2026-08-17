@@ -1,0 +1,73 @@
+TODO.md
+  s_86aed8fa1ab2c3::t_01de86d90b4503 56
+  s_86aed8fa1ab2c3::t_151c76a2cc8735 70
+  s_86aed8fa1ab2c3::t_1b6939f7813bb8 75,78
+  s_86aed8fa1ab2c3::t_f988d6333f54a6 83,88
+scripts/typecheck-integration.mjs
+  s_86aed8fa1ab2c3::t_32ed796499d9bb 118
+docs/cookbook/adding-a-python-bridge.zh.md
+  s_86aed8fa1ab2c3::t_ac79281c59912e 17-40
+README.zh.md
+  s_86aed8fa1ab2c3::t_916e587211ae3d 47-49
+  s_86aed8fa1ab2c3::t_4de98f3595c4ab 89-103,106-121
+  s_86aed8fa1ab2c3::t_c0f8aef2e061c8 71-72
+scripts/setup-integration.mjs
+  s_86aed8fa1ab2c3::t_7c57359d37bee7 132-134
+  s_86aed8fa1ab2c3::t_5654c50d603990 14,16-21
+  s_86aed8fa1ab2c3::t_a82d3f460cda36 111-131,135-150
+  s_86aed8fa1ab2c3::t_9ea668041e7b95 204-207
+  s_86aed8fa1ab2c3::t_b602cefcd16d82 38
+  s_86aed8fa1ab2c3::t_f7bf04b168063c 15
+skill/dsh-python-plugin/SKILL.md
+  s_86aed8fa1ab2c3::t_f84bd1044c7021 52-71,73
+  s_86aed8fa1ab2c3::t_0da788907b8402 8-10
+tests/integration/lkb-composition.mjs
+  s_86aed8fa1ab2c3::t_34c6c2f8425ae3 189-197
+  s_11de2233c80156::t_a9de88b6558855 26,58-74,93,98-104,149
+docs/cookbook/adding-a-python-bridge.md
+  s_86aed8fa1ab2c3::t_be1e4ed4bd87b7 17-40
+skill/dsh-python-plugin/references/manual-pipeline.md
+  s_86aed8fa1ab2c3::t_fd8ea55cb79a84 5-24
+README.md
+  s_86aed8fa1ab2c3::t_0a776a3541d8a8 47-48
+  s_86aed8fa1ab2c3::t_5165b85cd87445 71-72
+  s_86aed8fa1ab2c3::t_a06c58a23296b2 89-103,106-121
+  s_86aed8fa1ab2c3::t_0262248ab5a5f1 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "37606432105bbc330c2b88256882550594850507",
+  "prompts": {},
+  "sessions": {
+    "s_11de2233c80156": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7de4c6513ef57dfc7eef00",
+        "model": "deepseek_v4_flash_official__max"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>"
+    },
+    "s_86aed8fa1ab2c3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fbdfd67cc072c849c6638",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "external_session_id": "6a7fbdfd67cc072c849c6638",
+        "runtime_client": "trae-tob-git-ai",
+        "dedupe_key": "6a7fbdfd67cc072c849c6638:6a827e3267cc072c849cbcbe:afterEdit:4edb7b93",
+        "client_type": "ide",
+        "session_id": "6a7fbdfd67cc072c849c6638",
+        "tool_use_id": "6a827e3267cc072c849cbcbe",
+        "operation_id": "6a827e3267cc072c849cbcbe",
+        "tool_type": "builtin",
+        "source_scene": "agent",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "edit_kind": "file_edit"
+      }
+    }
+  }
+}
