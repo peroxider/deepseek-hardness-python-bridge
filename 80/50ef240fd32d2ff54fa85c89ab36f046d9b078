@@ -1,0 +1,65 @@
+skill/dsh-python-plugin/references/pitfalls.md
+  s_86aed8fa1ab2c3::t_8f8a6df0e6fd97 67-72
+site/decorators.html
+  s_86aed8fa1ab2c3::t_54737fdff8ed2a 146
+packages/bridge/python-bridge-runtime/src/index.ts
+  s_86aed8fa1ab2c3::t_c33b5087759e8d 285-292
+  s_86aed8fa1ab2c3::t_48c1eefb5860c4 616
+  s_86aed8fa1ab2c3::t_53501f2f747173 284
+tests/e2e/runtime-lifecycle.mjs
+  s_86aed8fa1ab2c3::t_ddd4e7056ddc58 284-310
+  s_86aed8fa1ab2c3::t_7892d4a2aba823 18-19
+python/sdk-dsl/README.md
+  s_86aed8fa1ab2c3::t_db1388e67488aa 39
+python/sdk-dsl/tests/test_integration.py
+  s_86aed8fa1ab2c3::t_20f20bd34bbe1e 129-144
+packages/bridge/python-bridge-runtime/tests/bridge.spec.ts
+  s_86aed8fa1ab2c3::t_e467695ae0a703 163-173
+  s_86aed8fa1ab2c3::t_3e0f7536c96c17 18-19
+  s_86aed8fa1ab2c3::t_f25f429ff0b712 37,44
+packages/bridge/python-bridge-runtime/README.md
+  s_86aed8fa1ab2c3::t_b0009718d6f6d6 35-38
+  s_86aed8fa1ab2c3::t_048e0bebe592a9 67
+python/sdk-dsl/README.zh.md
+  s_86aed8fa1ab2c3::t_a552b94340a262 39
+TODO.md
+  s_86aed8fa1ab2c3::t_a1af95dfa9bfe4 190,193
+python/sdk-dsl/src/dsh_bridge/runtime.py
+  s_86aed8fa1ab2c3::t_93a5b4a46752f0 9-11
+  s_86aed8fa1ab2c3::t_1bfc414b996ea7 72-74
+  s_86aed8fa1ab2c3::t_e9eaa7e48b7a19 395-409
+  s_86aed8fa1ab2c3::t_eee8e8b2bf5c78 592-615
+python/sdk-dsl/tests/test_runtime.py
+  s_86aed8fa1ab2c3::t_777fc4f6c480e2 277-321,323-325
+  s_86aed8fa1ab2c3::t_74f2de6891c488 19,25
+  s_86aed8fa1ab2c3::t_a05ed17202d5e7 322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "8050ef240fd32d2ff54fa85c89ab36f046d9b078",
+  "prompts": {},
+  "sessions": {
+    "s_86aed8fa1ab2c3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fbdfd67cc072c849c6638",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "dedupe_key": "6a7fbdfd67cc072c849c6638:6a829a5d67cc072c849cc0a3:afterEdit:18e5262c",
+        "edit_kind": "file_edit",
+        "external_session_id": "6a7fbdfd67cc072c849c6638",
+        "tool_use_id": "6a829a5d67cc072c849cc0a3",
+        "operation_id": "6a829a5d67cc072c849cc0a3",
+        "source_scene": "agent",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "client_type": "ide",
+        "session_id": "6a7fbdfd67cc072c849c6638",
+        "tool_type": "builtin",
+        "runtime_client": "trae-tob-git-ai"
+      }
+    }
+  }
+}
