@@ -90,7 +90,7 @@
 
 ### M1.5 双路径文档
 
-- [ ] **任务**：README 增"Generic vs. codegen"章节：通用插件（零构建、动态类型）为默认；
+- [x] **任务**：README 增"Generic vs. codegen"章节：通用插件（零构建、动态类型）为默认；
   codegen（静态类型、per-module schemastery Config）为高级路径。cookbook 同步。
 
 ---
