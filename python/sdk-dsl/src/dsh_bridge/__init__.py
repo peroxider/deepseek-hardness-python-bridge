@@ -31,7 +31,7 @@ from ._bridge_metadata import (
 )
 from ._errors import PythonBridgeError, BRIDGE_ERROR_KIND_MAP
 
-__version__ = "0.0.0.dev0"
+__version__ = "0.0.1"
 
 
 def __getattr__(name: str):

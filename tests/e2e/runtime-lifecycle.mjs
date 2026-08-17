@@ -276,7 +276,7 @@ const ctx = new Context({})
   } catch (e) { caught = e }
   assert(caught instanceof PythonBridgeError && caught.kind === 'dependency-missing' && caught.code === -32012,
     `dependency-missing classification (got ${caught?.kind}/${caught?.code})`)
-  assert((caught?.message ?? '').includes('pip install dsh-bridge'), 'install guidance present in message')
+        assert((caught?.message ?? '').includes('pip install dsh-python-bridge'), 'install guidance present in message')
   assert(spawnCalls === 0, 'child never spawned after probe failure')
   await service.dispose()
 }

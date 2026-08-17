@@ -1,4 +1,4 @@
-# dsh-bridge
+# dsh-python-bridge
 
 [English](README.md) | 中文
 
@@ -7,7 +7,7 @@ Python 装饰器库与运行时，把 Python 模块通过 DeepSeek Harness Pytho
 ## 安装
 
 ```sh
-pip install dsh-bridge
+pip install dsh-python-bridge
 ```
 
 ## 装饰器

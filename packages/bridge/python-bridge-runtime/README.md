@@ -32,7 +32,7 @@ The bridge owns its spawn the same way SDK-managed transports do (see the `dsh-s
 
 ## Interpreter probe
 
-Before spawning, the bridge verifies the interpreter can import the bridge runtime with `pythonBin -c "import dsh_bridge"`. A probe failure raises `PythonBridgeError` with `kind: 'dependency-missing'`, `code: -32012`, and `pip install dsh-bridge` guidance — never a confusing immediate `worker-exit`. Probe results are cached per `pythonBin`, so known-good interpreters are not re-probed on reconnect. Tests substitute the probe through `internals.probeFn`.
+Before spawning, the bridge verifies the interpreter can import the bridge runtime with `pythonBin -c "import dsh_bridge"`. A probe failure raises `PythonBridgeError` with `kind: 'dependency-missing'`, `code: -32012`, and `pip install dsh-python-bridge` guidance — never a confusing immediate `worker-exit`. Probe results are cached per `pythonBin`, so known-good interpreters are not re-probed on reconnect. Tests substitute the probe through `internals.probeFn`.
 
 ## Version negotiation
 

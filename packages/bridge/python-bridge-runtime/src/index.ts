@@ -288,7 +288,7 @@ const DEPENDENCY_MISSING_CODE = -32012
  * in `dsh_bridge.__version__` must happen together.
  */
 export const PYTHON_BRIDGE_CLIENT_NAME = 'dsh-python-bridge-runtime'
-export const PYTHON_BRIDGE_CLIENT_VERSION = '0.1.0'
+export const PYTHON_BRIDGE_CLIENT_VERSION = '0.0.1'
 
 /**
  * Interpreter probe results keyed by `pythonBin`. `dsh_bridge` presence is a
@@ -497,7 +497,7 @@ export class PythonBridge {
       throw new PythonBridgeError(
         `python interpreter '${python}' cannot import the dsh-bridge runtime ` +
         `(needed to load module '${this.spec.module}'). ` +
-        'Install it with `pip install dsh-bridge`, or make the package ' +
+        'Install it with `pip install dsh-python-bridge`, or make the package ' +
         "importable in that interpreter's environment, then retry.",
         'dependency-missing',
         DEPENDENCY_MISSING_CODE,

@@ -1,4 +1,4 @@
-name: Publish dsh-bridge to PyPI
+name: Publish dsh-python-bridge to PyPI
 
 on:
   push:
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/dsh-bridge
+      url: https://pypi.org/p/dsh-python-bridge
     permissions:
       id-token: write
     steps:
@@ -82,7 +82,7 @@ jobs:
         run: python -m build --outdir dist
 
       # Trusted publishing (OIDC): requires a PyPI publisher for this repo to be
-      # configured on pypi.org/p/dsh-bridge. Until then, publish the first
+      # configured on pypi.org/p/dsh-python-bridge. Until then, publish the first
       # release manually from a local build:
       #   cd python/sdk-dsl && python -m pip install build twine
       #   python -m build --outdir dist && twine upload dist/*

@@ -398,7 +398,7 @@ describe('PythonBridge (interpreter probe)', () => {
     }
     expect(error).toBeInstanceOf(PythonBridgeError)
     expect(error).toMatchObject({ kind: 'dependency-missing', code: -32012 })
-    expect((error as Error).message).toContain('pip install dsh-bridge')
+    expect((error as Error).message).toContain('pip install dsh-python-bridge')
   })
 
   it('never calls spawnFn when the probe fails', () => {

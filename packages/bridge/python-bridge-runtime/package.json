@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-python-bridge-runtime",
   "description": "TypeScript runtime that lets a Python module expose itself as a Cordis Service / Event listener / capability Provider over newline-delimited JSON-RPC. Spawns `python -u -m dsh_bridge.runtime` and forwards decorated methods.",
-  "version": "0.1.0-rc.5",
+  "version": "0.0.1",
   "publishConfig": {
     "access": "public"
   },

@@ -32,7 +32,7 @@ Bridge 以 SDK 托管传输层相同的方式拥有自己的 spawn（见 `dsh-su
 
 ## 解释器探测
 
-spawn 之前，bridge 会用 `pythonBin -c "import dsh_bridge"` 验证解释器能否导入 bridge 运行时。探测失败时抛出 `PythonBridgeError`，`kind: 'dependency-missing'`、`code: -32012`，并附带 `pip install dsh-bridge` 安装指引——而不是令人困惑的即时 `worker-exit`。探测结果按 `pythonBin` 缓存，已确认正常的解释器不会在重连时重复探测。测试可通过 `internals.probeFn` 替换探测。
+spawn 之前，bridge 会用 `pythonBin -c "import dsh_bridge"` 验证解释器能否导入 bridge 运行时。探测失败时抛出 `PythonBridgeError`，`kind: 'dependency-missing'`、`code: -32012`，并附带 `pip install dsh-python-bridge` 安装指引——而不是令人困惑的即时 `worker-exit`。探测结果按 `pythonBin` 缓存，已确认正常的解释器不会在重连时重复探测。测试可通过 `internals.probeFn` 替换探测。
 
 ## 版本协商
 

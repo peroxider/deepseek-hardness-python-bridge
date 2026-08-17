@@ -59,7 +59,7 @@ Remaining limits, honestly stated:
 ## Repository layout
 
 ```
-python/sdk-dsl/                          dsh-bridge PyPI package: decorators + runtime
+python/sdk-dsl/                          dsh-python-bridge PyPI package: decorators + runtime
   src/dsh_bridge/__init__.py               9 zero-side-effect decorators
   src/dsh_bridge/runtime.py                python -u -m dsh_bridge.runtime <module> entry point
   src/dsh_bridge/_type_inference.py        PEP 484 → JSON Schema inference
@@ -215,7 +215,7 @@ The steps are decoupled — each consumes artifacts the previous one left on dis
 | `ConnectionError` | `-32010` | `bridge-down` |
 | any other | `-32603` | `exception` |
 | process exit during call | `-32011` | `worker-exit` |
-| interpreter lacks dsh-bridge (spawn-time probe) | `-32012` | `dependency-missing` |
+| interpreter lacks dsh-python-bridge (spawn-time probe) | `-32012` | `dependency-missing` |
 
 ## Testing
 

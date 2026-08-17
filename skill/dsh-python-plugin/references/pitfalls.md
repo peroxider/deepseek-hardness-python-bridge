@@ -55,9 +55,9 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 
 ## `dependency-missing` / `-32012` at spawn
 
-**Symptom**: `ctx.pythonBridge.spawn(...)` (or the generic plugin mount) throws `PythonBridgeError` with `kind: 'dependency-missing'` and the message `pip install dsh-bridge`.
+**Symptom**: `ctx.pythonBridge.spawn(...)` (or the generic plugin mount) throws `PythonBridgeError` with `kind: 'dependency-missing'` and the message `pip install dsh-python-bridge`.
 **Cause**: the configured `pythonBin` cannot `import dsh_bridge` — the runtime package is not installed in that interpreter (or `pythonBin` points at the wrong interpreter).
-**Fix**: `pip install dsh-bridge` into the target interpreter, or set `pythonBin` to the interpreter that has it. The bridge probes with `pythonBin -c "import dsh_bridge"` before spawning, so a missing runtime is caught immediately instead of surfacing as a confusing `worker-exit`.
+**Fix**: `pip install dsh-python-bridge` into the target interpreter, or set `pythonBin` to the interpreter that has it. The bridge probes with `pythonBin -c "import dsh_bridge"` before spawning, so a missing runtime is caught immediately instead of surfacing as a confusing `worker-exit`.
 
 ## Python child exits immediately (`worker-exit`, `-32011`)
 
@@ -67,8 +67,8 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 ## `protocol-mismatch` / `-32006` at initialize
 
 **Symptom**: mounting fails because the `initialize` handshake rejects with `PythonBridgeError` of `kind: 'protocol-mismatch'`, `code: -32006`, and a message naming the client and server major versions.
-**Cause**: the installed `dsh-bridge` (Python runtime) and the TypeScript bridge disagree on the wire protocol's major version. The runtime rejects a client whose major differs from its own `serverInfo.version` major.
-**Fix**: align versions — `pip install dsh-bridge` a release matching the TypeScript bridge's major (both are major 0 today), or update the TypeScript bridge. Never mix majors.
+**Cause**: the installed `dsh-python-bridge` (Python runtime) and the TypeScript bridge disagree on the wire protocol's major version. The runtime rejects a client whose major differs from its own `serverInfo.version` major.
+**Fix**: align versions — `pip install dsh-python-bridge` a release matching the TypeScript bridge's major, or update the TypeScript bridge. Never mix majors.
 
 When extending the wire, follow [`docs/protocol.md`](../../../docs/protocol.md): same-major manifest and request changes are optional and additive; removals, renames, type changes, or new required behavior need a coordinated major bump.
 

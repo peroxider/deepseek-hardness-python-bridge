@@ -724,7 +724,7 @@ function generatePackageJson(name: string): BridgePackageFile {
   const pkg = {
     name,
     description: 'Generated bridge package from dsh-bridge codegen.',
-    version: '0.0.0',
+    version: '0.0.1',
     type: 'module',
     main: 'lib/index.js',
     types: 'lib/types/index.d.ts',

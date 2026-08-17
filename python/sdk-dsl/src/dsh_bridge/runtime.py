@@ -63,7 +63,7 @@ from ._errors import (
 # `dsh_bridge.__init__`, which defines `__version__`).
 def _bridge_version() -> str:
     import dsh_bridge
-    return getattr(dsh_bridge, "__version__", "0.0.0.dev0")
+    return getattr(dsh_bridge, "__version__", "0.0.1")
 
 
 SERVER_INFO_NAME = "dsh-python-bridge-runtime"
@@ -394,7 +394,7 @@ def _annotation_string(annotation: Any) -> Optional[str]:
 def _major_version(version: object) -> int | None:
     """Return the integer major component of a version string, else `None`.
 
-    Accepts PEP 440 forms (`"1.2.3"`, `"0.1.0-rc.5"`, `"0.0.0.dev0"`) by
+    Accepts PEP 440 forms such as `"1.2.3"` and `"0.0.1"` by
     reading the segment before the first dot; any non-numeric leading segment
     (or a non-string input) yields `None`.
     """
@@ -606,7 +606,7 @@ class _Server:
                     f"dsh_bridge: protocol version mismatch: client major {client_major} "
                     f"does not match server major {server_major} "
                     f"(client {client_version!r} vs server {server_info['version']!r}). "
-                    f"Align the dsh-bridge versions: install a matching dsh-bridge in "
+                    f"Align the dsh-bridge versions: install a matching dsh-python-bridge in "
                     f"the target interpreter, or update the TypeScript bridge."
                 ),
                 {"kind": "protocol-mismatch"},

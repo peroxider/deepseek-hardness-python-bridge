@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-python-bridge-codegen",
   "description": "AST-based TypeScript generator for the Python Capability Bridge. Parses Python sources, walks `dsh_bridge` decorators, and emits a TypeScript bridge package conformant to `@deepseek-ai/dsh-python-bridge-runtime`.",
-  "version": "0.1.0-rc.5",
+  "version": "0.0.1",
   "publishConfig": {
     "access": "public"
   },

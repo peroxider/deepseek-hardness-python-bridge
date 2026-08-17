@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-python-bridge",
   "description": "Generic Cordis plugin that registers Python bridge services, tools, and listeners from the runtime manifest.",
-  "version": "0.1.0-rc.5",
+  "version": "0.0.1",
   "publishConfig": {
     "access": "public"
   },

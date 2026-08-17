@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install and import the built dsh-bridge wheel in an isolated environment."""
+"""Install and import the built dsh-python-bridge wheel in an isolated environment."""
 
 from __future__ import annotations
 

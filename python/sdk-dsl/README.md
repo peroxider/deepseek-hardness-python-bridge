@@ -1,4 +1,4 @@
-# dsh-bridge
+# dsh-python-bridge
 
 English | [中文](README.zh.md)
 
@@ -7,7 +7,7 @@ Python decorator library and runtime that exposes a Python module as a Cordis Se
 ## Installation
 
 ```sh
-pip install dsh-bridge
+pip install dsh-python-bridge
 ```
 
 ## Decorators
