@@ -6,7 +6,9 @@ framing matches `@deepseek-ai/dsh-sdk-protocol` `JsonRpcLineTransport`: one
 compact JSON object per `\\n`-terminated line.
 
 Wire method names:
-- `initialize` — handshake; returns `serverInfo` + manifest of available methods.
+- `initialize` — handshake; the client sends `clientInfo {name, version}` and the
+  server validates it (rejecting a mismatched major as `protocol-mismatch`), then
+  responds with `serverInfo` + manifest of available methods.
 - `<method>` — synchronous call to a `@provide_method` (the bare Python method
   name, e.g. `embed`).
 - `<tool>` — synchronous call to a `@tool`-decorated function (the bare tool
@@ -66,6 +68,9 @@ def _bridge_version() -> str:
 
 
 SERVER_INFO_NAME = "dsh-python-bridge-runtime"
+
+# JSON-RPC code for a rejected initialize handshake (client/server version skew).
+PROTOCOL_MISMATCH_CODE = -32006
 
 # Cap on the notification queue (per spec §6.7: drop after 1 MiB per event type).
 _NOTIFY_QUEUE_MAX_BYTES = 1024 * 1024
@@ -387,6 +392,21 @@ def _annotation_string(annotation: Any) -> Optional[str]:
         return None
 
 
+def _major_version(version: object) -> int | None:
+    """Return the integer major component of a version string, else `None`.
+
+    Accepts PEP 440 forms (`"1.2.3"`, `"0.1.0-rc.5"`, `"0.0.0.dev0"`) by
+    reading the segment before the first dot; any non-numeric leading segment
+    (or a non-string input) yields `None`.
+    """
+    if not isinstance(version, str):
+        return None
+    head = version.split(".", 1)[0].strip()
+    if not head.isdigit():
+        return None
+    return int(head)
+
+
 def _provide_method_annotations(func: Callable[..., Any]) -> tuple[dict[str, str], Optional[str]]:
     """Return (parameter name → annotation string, return annotation string).
 
@@ -569,6 +589,30 @@ class _Server:
 
     def _handle_initialize(self, request_id: Any, params: dict[str, Any]) -> None:
         server_info = {"name": SERVER_INFO_NAME, "version": _bridge_version()}
+        # Version negotiation (M6): the client identifies itself with
+        # `clientInfo.version`; a present version whose major differs from the
+        # server's is rejected as a `protocol-mismatch` with a readable
+        # message. Clients that omit `clientInfo` (older handshakes) are
+        # accepted — the TypeScript runtime always sends it, so in practice
+        # the check always runs.
+        client_info = params.get("clientInfo")
+        client_version = client_info.get("version") if isinstance(client_info, dict) else None
+        server_major = _major_version(server_info["version"])
+        client_major = _major_version(client_version)
+        if server_major is not None and client_major is not None and client_major != server_major:
+            self._transport.respond_error(
+                request_id,
+                PROTOCOL_MISMATCH_CODE,
+                (
+                    f"dsh_bridge: protocol version mismatch: client major {client_major} "
+                    f"does not match server major {server_major} "
+                    f"(client {client_version!r} vs server {server_info['version']!r}). "
+                    f"Align the dsh-bridge versions: install a matching dsh-bridge in "
+                    f"the target interpreter, or update the TypeScript bridge."
+                ),
+                {"kind": "protocol-mismatch"},
+            )
+            return
         manifest = {
             "services": [
                 {"name": m.name, "class": m.cls.__name__, "initFields": _service_init_fields(m.cls)}

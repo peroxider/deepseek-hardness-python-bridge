@@ -282,6 +282,15 @@ const STDERR_RING_LINES = 100
 const DEPENDENCY_MISSING_CODE = -32012
 
 /**
+ * Client identity sent during `initialize` for version negotiation. The Python
+ * runtime rejects the handshake as a `protocol-mismatch` (`-32006`) when the
+ * client version's major differs from its own, so bumping the major here and
+ * in `dsh_bridge.__version__` must happen together.
+ */
+export const PYTHON_BRIDGE_CLIENT_NAME = 'dsh-python-bridge-runtime'
+export const PYTHON_BRIDGE_CLIENT_VERSION = '0.1.0'
+
+/**
  * Interpreter probe results keyed by `pythonBin`. `dsh_bridge` presence is a
  * per-interpreter fact, so a cached positive skips redundant probes on every
  * reconnect and a cached negative makes the fast-fail error repeatable
@@ -604,6 +613,7 @@ export class PythonBridge {
     try {
       const result = (await transport.request('initialize', {
         cwd: this.spec.cwd ?? process.cwd(),
+        clientInfo: { name: PYTHON_BRIDGE_CLIENT_NAME, version: PYTHON_BRIDGE_CLIENT_VERSION },
       })) as PythonBridgeInitializeResult
       if (this.disposed) return
       this.manifest = result.manifest

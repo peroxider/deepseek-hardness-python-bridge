@@ -187,10 +187,10 @@
 
 ### M6.1 initialize 版本协商
 
-- [ ] **任务**：TS 侧发送 `clientInfo: {name, version}`；Python 侧校验
+- [x] **任务**：TS 侧发送 `clientInfo: {name, version}`；Python 侧校验
   `serverInfo.version` 兼容集（初版策略：major 相同即兼容，否则拒绝并给出
   `protocol-mismatch` 错误 kind）。
-- [ ] **验收**：伪造不匹配版本时 `initialize` 以可读错误拒绝。
+- [x] **验收**：伪造不匹配版本时 `initialize` 以可读错误拒绝。
 
 ### M6.2 兼容承诺文档
 

@@ -36,7 +36,7 @@ The runtime walks the bridge registry and dispatches JSON-RPC requests to the ma
 
 ### Runtime manifest
 
-The `initialize` handshake returns `serverInfo` plus a `manifest` carrying every dynamically registered surface with the metadata a host needs to build the plugin without codegen:
+The `initialize` handshake returns `serverInfo` plus a `manifest` carrying every dynamically registered surface with the metadata a host needs to build the plugin without codegen. The client sends `clientInfo: { name, version }`; a client whose major version differs from the runtime's `serverInfo.version` is rejected with a `protocol-mismatch` error (wire version negotiation).
 
 - `tools[]` — `name`, `description`, `parameters` (JSON Schema), `outputSchema`
 - `provideMethods[]` — `name`, `timeoutMs`, `concurrencySafe`, `parameters` (PEP 484 annotation strings), `return`

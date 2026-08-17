@@ -32,6 +32,10 @@ The bridge owns its spawn the same way SDK-managed transports do (see the `dsh-s
 
 Before spawning, the bridge verifies the interpreter can import the bridge runtime with `pythonBin -c "import dsh_bridge"`. A probe failure raises `PythonBridgeError` with `kind: 'dependency-missing'`, `code: -32012`, and `pip install dsh-bridge` guidance — never a confusing immediate `worker-exit`. Probe results are cached per `pythonBin`, so known-good interpreters are not re-probed on reconnect. Tests substitute the probe through `internals.probeFn`.
 
+## Version negotiation
+
+The `initialize` handshake carries `clientInfo: { name, version }` (`PYTHON_BRIDGE_CLIENT_NAME` / `PYTHON_BRIDGE_CLIENT_VERSION`). The Python runtime accepts the handshake when the client version's major matches its own `serverInfo.version` major, and rejects it with `protocol-mismatch` (`-32006`) and a readable message otherwise. Keep the two majors in lockstep when releasing.
+
 ## Reconnect
 
 An unexpected child exit respawns the interpreter with exponential backoff (spec §6.7). `PythonBridge.spawn()` accepts a `reconnect` block:
@@ -60,6 +64,7 @@ The attempt budget resets after `maxDelayMs` of stable uptime. While disconnecte
 | any other | `-32603` | `exception` |
 | process exit during call | `-32011` | `worker-exit` |
 | interpreter lacks dsh-bridge (spawn-time probe) | `-32012` | `dependency-missing` |
+| client/server version skew at initialize | `-32006` | `protocol-mismatch` |
 
 `PythonBridgeError` carries `kind` and `code` matching the wire vocabulary, plus the original `data` payload for diagnostics.
 

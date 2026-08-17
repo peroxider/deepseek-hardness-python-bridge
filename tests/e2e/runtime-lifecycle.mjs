@@ -15,6 +15,8 @@ import {
   JsonRpcResponseError,
 } from '@deepseek-ai/dsh-sdk-protocol'
 import {
+  PYTHON_BRIDGE_CLIENT_NAME,
+  PYTHON_BRIDGE_CLIENT_VERSION,
   PythonBridgeService,
   PythonBridgeError,
   toPythonBridgeError,
@@ -276,6 +278,33 @@ const ctx = new Context({})
     `dependency-missing classification (got ${caught?.kind}/${caught?.code})`)
   assert((caught?.message ?? '').includes('pip install dsh-bridge'), 'install guidance present in message')
   assert(spawnCalls === 0, 'child never spawned after probe failure')
+  await service.dispose()
+}
+
+// 11. initialize carries clientInfo for version negotiation.
+{
+  const service = new PythonBridgeService(ctx)
+  const child = new FakeChild()
+  let initParams = null
+  child.peer.onRequest(async (method, params) => {
+    if (method === 'initialize') {
+      initParams = params
+      return {
+        serverInfo: { name: 'dsh-python-bridge-runtime', version: '0' },
+        manifest: {
+          services: [], provideMethods: [], tools: [], listeners: [],
+          capabilities: [], capabilityMethods: [], promptSections: [], methods: [],
+        },
+      }
+    }
+    throw new JsonRpcResponseError(-32601, `method not found: ${method}`)
+  })
+  const bridge = service.spawn({ module: 'example', reconnect: { enabled: false } }, { spawnFn: () => child, probeFn: () => true })
+  await waitFor(() => bridge.ready, 'ready before clientInfo case')
+  assert(
+    initParams?.clientInfo?.name === PYTHON_BRIDGE_CLIENT_NAME && initParams?.clientInfo?.version === PYTHON_BRIDGE_CLIENT_VERSION,
+    `initialize carries clientInfo {name, version} (got ${JSON.stringify(initParams?.clientInfo)})`,
+  )
   await service.dispose()
 }
 

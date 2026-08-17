@@ -64,6 +64,12 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 **Cause**: the module fails to import inside the child — the child cwd lacks the packages.
 **Fix**: the plugin root must contain every imported Python package (the installer's smoke step catches this). Check the child's stderr tail in the error message.
 
+## `protocol-mismatch` / `-32006` at initialize
+
+**Symptom**: mounting fails because the `initialize` handshake rejects with `PythonBridgeError` of `kind: 'protocol-mismatch'`, `code: -32006`, and a message naming the client and server major versions.
+**Cause**: the installed `dsh-bridge` (Python runtime) and the TypeScript bridge disagree on the wire protocol's major version. The runtime rejects a client whose major differs from its own `serverInfo.version` major.
+**Fix**: align versions — `pip install dsh-bridge` a release matching the TypeScript bridge's major (both are major 0 today), or update the TypeScript bridge. Never mix majors.
+
 ## Plugin changes do not take effect
 
 **Cause**: the running instance holds the old artifacts in memory.

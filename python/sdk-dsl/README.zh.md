@@ -36,7 +36,7 @@ python -u -m dsh_bridge.runtime <module.path> [--class <ClassName>] [--function 
 
 ### 运行时 manifest
 
-`initialize` 握手返回 `serverInfo` 外加一个 `manifest`，携带所有动态注册的表面及其元数据，宿主无需 codegen 即可据此构建插件：
+`initialize` 握手返回 `serverInfo` 外加一个 `manifest`，携带所有动态注册的表面及其元数据，宿主无需 codegen 即可据此构建插件。客户端发送 `clientInfo: { name, version }`；若客户端主版本号与运行时 `serverInfo.version` 的主版本号不一致，握手以 `protocol-mismatch` 错误拒绝（线协议版本协商）。
 
 - `tools[]` —— `name`、`description`、`parameters`（JSON Schema）、`outputSchema`
 - `provideMethods[]` —— `name`、`timeoutMs`、`concurrencySafe`、`parameters`（PEP 484 注解字符串）、`return`

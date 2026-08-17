@@ -126,6 +126,22 @@ def test_initialize_handshake(bridge: _BridgeProcess) -> None:
     assert audit["function"] == "audit"
 
 
+def test_initialize_rejects_protocol_version_mismatch(bridge: _BridgeProcess) -> None:
+    bridge.send(
+        {
+            "jsonrpc": "2.0",
+            "id": "init",
+            "method": "initialize",
+            "params": {"clientInfo": {"name": "dsh-python-bridge-runtime", "version": "1.0.0"}},
+        }
+    )
+    resp = bridge.recv_response()
+    assert resp["id"] == "init"
+    assert resp["error"]["code"] == -32006
+    assert resp["error"]["data"]["kind"] == "protocol-mismatch"
+    assert "major" in resp["error"]["message"]
+
+
 def test_call_provide_method(bridge: _BridgeProcess) -> None:
     bridge.send({"jsonrpc": "2.0", "id": "init", "method": "initialize", "params": {}})
     bridge.recv_response()

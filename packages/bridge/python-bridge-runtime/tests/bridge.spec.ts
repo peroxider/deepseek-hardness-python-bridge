@@ -15,6 +15,8 @@ import {
   JsonRpcResponseError,
 } from '@deepseek-ai/dsh-sdk-protocol'
 import {
+  PYTHON_BRIDGE_CLIENT_NAME,
+  PYTHON_BRIDGE_CLIENT_VERSION,
   PythonBridge,
   PythonBridgeError,
   PythonBridgeService,
@@ -32,12 +34,14 @@ import type {
 
 class MockTransport implements PythonBridgeTransport {
   notifications: Array<{ method: string; params: Record<string, unknown> }> = []
+  requests: Array<{ method: string; params: Record<string, unknown> }> = []
   requestHandler: ((method: string, params: Record<string, unknown>) => Promise<unknown>) | undefined
   notificationHandler: ((method: string, params: Record<string, unknown>) => void) | undefined
   workerRequestHandler: ((method: string, params: Record<string, unknown>) => Promise<unknown>) | undefined
   closed = false
 
   request(method: string, params: object): Promise<unknown> {
+    this.requests.push({ method, params: params as Record<string, unknown> })
     if (!this.requestHandler) return Promise.reject(new Error('no handler'))
     return this.requestHandler(method, params as Record<string, unknown>)
   }
@@ -154,6 +158,17 @@ describe('PythonBridge (mock transport)', () => {
     const bridge = service.spawn({ module: 'example' }, { transport })
     await vi.waitFor(() => expect(bridge.ready).toBe(true))
     expect(bridge.bridgeManifest?.methods).toContain('embed')
+  })
+
+  it('sends clientInfo during the initialize handshake for version negotiation', async () => {
+    transport.respondInitialize([])
+    service.spawn({ module: 'example' }, { transport })
+    await vi.waitFor(() => expect(transport.requests.some(r => r.method === 'initialize')).toBe(true))
+    const init = transport.requests.find(r => r.method === 'initialize')
+    expect(init?.params.clientInfo).toEqual({
+      name: PYTHON_BRIDGE_CLIENT_NAME,
+      version: PYTHON_BRIDGE_CLIENT_VERSION,
+    })
   })
 
   it('rejects calls before initialization with bridge-down', async () => {

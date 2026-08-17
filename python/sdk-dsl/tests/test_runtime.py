@@ -16,11 +16,13 @@ from dsh_bridge._errors import (
     classify_exception,
 )
 from dsh_bridge.runtime import (
+    PROTOCOL_MISMATCH_CODE,
     _Dispatcher,
     _Router,
     _Server,
     _StdioTransport,
     SERVER_INFO_NAME,
+    _major_version,
     parse_args,
 )
 
@@ -270,6 +272,55 @@ def test_server_initialize_returns_manifest():
     assert "embed" in result["manifest"]["methods"]
     assert "resize" in result["manifest"]["methods"]
     assert any(s["event"] == "session/event" for s in result["manifest"]["listeners"])
+
+
+def _build_empty_server():
+    """An empty-registry server for handshake-only version-negotiation assertions."""
+    registry = get_registry()
+    router = _Router(registry, None, [])
+    router.build()
+    transport = _StdioTransport(stdin=io.StringIO(), stdout=io.StringIO())
+    dispatcher = _Dispatcher(router, transport)
+    server = _Server(router, transport, dispatcher, registry)
+    sink = io.StringIO()
+    transport._stdout = sink
+    return server, sink
+
+
+def test_server_initialize_accepts_matching_client_major():
+    server, sink = _build_empty_server()
+    server._handle_frame(
+        json.loads(
+            _build_request(
+                "initialize",
+                {"clientInfo": {"name": "dsh-python-bridge-runtime", "version": "0.9.0-rc.5"}},
+                request_id="i1",
+            )
+        )
+    )
+    frames = [json.loads(line) for line in sink.getvalue().split("\n") if line]
+    assert frames[0]["id"] == "i1"
+    assert frames[0]["result"]["serverInfo"]["name"] == SERVER_INFO_NAME
+
+
+def test_server_initialize_rejects_mismatched_client_major():
+    server, sink = _build_empty_server()
+    server._handle_frame(
+        json.loads(
+            _build_request(
+                "initialize",
+                {"clientInfo": {"name": "dsh-python-bridge-runtime", "version": "1.0.0"}},
+                request_id="i1",
+            )
+        )
+    )
+    frames = [json.loads(line) for line in sink.getvalue().split("\n") if line]
+    error = frames[0]["error"]
+    server_major = _major_version(dsh_bridge.__version__)
+    assert error["code"] == PROTOCOL_MISMATCH_CODE
+    assert error["data"]["kind"] == "protocol-mismatch"
+    assert "client major 1" in error["message"]
+    assert f"server major {server_major}" in error["message"]
 
 
 def test_server_initialize_manifest_carries_schema_and_annotations():
