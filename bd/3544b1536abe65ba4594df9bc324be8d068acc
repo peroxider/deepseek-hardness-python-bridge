@@ -1,0 +1,36 @@
+packages/bridge/python-bridge-runtime/tests/bridge.spec.ts
+  s_86aed8fa1ab2c3::t_8d60c2a9c09e7b 338
+  s_86aed8fa1ab2c3::t_77f89014271578 37,53
+  s_86aed8fa1ab2c3::t_e6f07ba382b1c8 145
+  s_86aed8fa1ab2c3::t_0b570e7dc09dd5 12
+  s_86aed8fa1ab2c3::t_9cfbe9592a699c 214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "bd3544b1536abe65ba4594df9bc324be8d068acc",
+  "prompts": {},
+  "sessions": {
+    "s_86aed8fa1ab2c3": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fbdfd67cc072c849c6638",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "operation_id": "6a828cb867cc072c849cbf58",
+        "runtime_client": "trae-tob-git-ai",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "source_scene": "agent",
+        "tool_type": "builtin",
+        "edit_kind": "file_edit",
+        "dedupe_key": "6a7fbdfd67cc072c849c6638:6a828cb867cc072c849cbf58:afterEdit:e5d50eda",
+        "client_type": "ide",
+        "tool_use_id": "6a828cb867cc072c849cbf58",
+        "external_session_id": "6a7fbdfd67cc072c849c6638",
+        "session_id": "6a7fbdfd67cc072c849c6638"
+      }
+    }
+  }
+}
