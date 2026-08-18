@@ -13,6 +13,15 @@ python3 -m pip install dsh-python-bridge
 
 This skill drives the conversion end to end. Both paths remain supported and consume the same decorated `bridge.py`: the **generic plugin** (`@peroxider/dsh-python-bridge`) is the current recommended path and needs no codegen or build — author `bridge.py`, add the bridge entries to `cordis.yml`, and point `pythonPath` at the module; the **codegen** path is the earlier, advanced deployment path that builds a self-contained TypeScript package with static per-module types. Start with the generic path (Step 2a); use codegen when the install cannot resolve the bridge packages, you need a self-contained artifact, or you want typed TS surfaces (Step 2b).
 
+## Path selection
+
+Use the paths in this order:
+
+1. **Generic path (preferred):** install `dsh-python-bridge` from PyPI, write `bridge.py`, and load `@peroxider/dsh-python-bridge` from `cordis.yml`. This is the shortest and most maintainable workflow.
+2. **Codegen path (supported legacy/advanced path):** run codegen and build a self-contained TypeScript plugin when the target dsh cannot resolve the npm bridge packages, or when static generated TypeScript surfaces are required.
+
+The generic path is an additional runtime-discovery layer; it does not replace or invalidate generated packages produced by the codegen path. Both paths use the same decorators, Python runtime, manifest, and JSON-RPC protocol.
+
 The codegen pipeline:
 
 ```
