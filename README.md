@@ -46,7 +46,7 @@ The premise is proven by four verification tiers, all reproducible offline via `
 
 1. **Python suite** — 49 pytest tests covering decorators, PEP 484 type inference, the JSON-RPC runtime, real-subprocess integration over stdio, version negotiation, and the enriched `initialize` manifest (tool schemas, method annotations, service init fields, listener function names).
 2. **Offline TypeScript E2E** — plain-Node assertions (no package install) covering codegen emission (55+ assertions), runtime lifecycle (worker-exit, reconnect, teardown ladder, env scrub), a real `python3` child round-trip, the generic plugin mounting on a stub Cordis context, and a generated package mounted on the same stub.
-3. **REAL-composition** — a test `cordis.yml` booted through the genuine vendored Cordis Loader (`vendor/loader` + `vendor/include`), with real schemastery applying the generated `static Config`, the real `ToolRuntime` holding the registered tool, a real `ctx.emit('session/event')` reaching the Python listener, and `ctx.fiber.dispose()` tearing the child down through the effect disposers. Both the generic plugin and the codegen path drive the same external LKB example end-to-end through the real ToolRuntime.
+3. **REAL-composition** — a test `cordis.yml` boots through the genuine vendored Cordis Loader (`vendor/loader` + `vendor/include`), with real schemastery applying plugin config, the real `ToolRuntime` holding registered tools, a real `ctx.emit('session/event')` reaching the Python listener, and `ctx.fiber.dispose()` tearing the child down through effect disposers. Both the generic plugin and codegen path drive an external Python example end-to-end.
 4. **Strict typecheck** — `tsc -b` (typescript 6.0.3, monorepo `tsconfig.base.json` flags: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) over the three bridge packages and a generated example package inside the monorepo's project-reference graph: zero errors.
 
 Remaining limits, honestly stated:
@@ -109,17 +109,17 @@ Start with the generic plugin; reach for codegen when you want static per-module
 When the composition loads `@peroxider/dsh-python-bridge-runtime`, one `cordis.yml` entry is the entire integration — no codegen, no build. Both packages ship as dependencies of the `@deepseek-ai/dsh-base` bundle, so a fresh dsh installation resolves these bare names without extra install steps:
 
 ```yaml
-- id: lkb
+- id: sample
   name: '@peroxider/dsh-python-bridge'
   config:
     pythonBin: python3
-    module: lkb_dsh.bridge
-    pythonPath: [/path/to/lkb/src]
+    module: sample_dsh.bridge
+    pythonPath: [/path/to/sample/src]
     initArgs:
       board_id: main
 ```
 
-On `initialize` the generic plugin reads the manifest the Python runtime reports and registers the decorated service (`ctx.lkb`), every `@tool`, and every listener — with tool schemas taken verbatim from the decorators. The codegen steps below remain the path to a built, self-contained package for deployments that cannot load `.ts` source.
+On `initialize` the generic plugin reads the manifest the Python runtime reports and registers the decorated service, every `@tool`, and every listener — with tool schemas taken verbatim from the decorators. The codegen steps below remain the path to a built, self-contained package for deployments that cannot load `.ts` source.
 
 ### 1. Author a Python module
 
@@ -166,8 +166,8 @@ For the development-stage workflow (a built dsh install that cannot load `.ts` s
 ```sh
 scripts/install-python-plugin.py \
   --source path/to/bridge.py \
-  --name '@my-org/lkb-bridge' \
-  --module lkb_dsh.bridge \
+  --name '@my-org/sample-bridge' \
+  --module sample_dsh.bridge \
   --python-src path/to/my-python/src \
   --config-json '{"boardId": "my-board"}'
 ```

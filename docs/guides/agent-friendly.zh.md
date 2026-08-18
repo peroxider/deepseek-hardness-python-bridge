@@ -16,7 +16,6 @@ skill 的参考文件是遇到边界情况时该查阅的深度文档：
 | --- | --- |
 | [`references/decorators.md`](../../skill/dsh-python-plugin/references/decorators.md) | 每个装饰器的精确契约（字段 → 配置键、可选性、类型投影） |
 | [`references/pitfalls.md`](../../skill/dsh-python-plugin/references/pitfalls.md) | 症状 → 原因 → 修复目录；从头调试前先打开它 |
-| [`references/contracts.md`](../../skill/dsh-python-plugin/references/contracts.md) | 宿主库运行时契约（如 LKB `owner == actor` 先声明后启动） |
 | [`references/manual-pipeline.md`](../../skill/dsh-python-plugin/references/manual-pipeline.md) | 一键安装器无法运行时的回退方案 |
 
 ## 任务一句话
@@ -90,5 +89,4 @@ scripts/install-python-plugin.py \
 
 - **永远不要修改业务代码**——只改包装模块。未挂载 bridge 时业务代码原样运行。
 - **永远不要承诺 capability / guard / system-prompt 功能**——它们只解析不发射。
-- **写包装器前先读宿主库的契约**（`references/contracts.md`），尤其是带所有权/生命周期规则的库（如 LKB `owner == actor`）。
 - **如实报告**：如果安装器无法运行（无 tsc / 无 dsh 安装）而改用手动流程，要说清楚；如果无法对运行中的实例验证，也要说清楚。

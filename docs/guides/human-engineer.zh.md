@@ -78,7 +78,7 @@ def audit(event: str, payload: dict) -> None:
 - 方法参数与返回值必须**可 JSON 序列化**（返回 dataclass 会挂起调用；返回普通 dict/list/标量——用 `dataclasses.asdict()` 或显式字段映射转换）。
 - 每个模块只发射第一个 `@service` 类；其余 service 拆到独立模块。
 
-完整装饰器契约见 [`skill/dsh-python-plugin/references/decorators.md`](../../skill/dsh-python-plugin/references/decorators.md)，宿主库契约模式（如 LKB 的 `owner == actor` 规则）见 [`skill/dsh-python-plugin/references/contracts.md`](../../skill/dsh-python-plugin/references/contracts.md)。
+完整装饰器契约见 [`skill/dsh-python-plugin/references/decorators.md`](../../skill/dsh-python-plugin/references/decorators.md)。
 
 ## 第 2 步——安装（codegen → 构建 → 组装 → patch）
 

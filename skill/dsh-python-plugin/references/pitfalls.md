@@ -42,11 +42,6 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 **Cause**: `@provide_method` on a free function (must be inside the `@service` class), or the method name differs from the wire name.
 **Fix**: move the method into the class; the wire name is the Python function name.
 
-## `owner_required` / `not_owner` denials from LKB-style libraries
-
-**Cause**: the host library requires claim-before-start.
-**Fix**: see `references/contracts.md` — auto-claim in the wrapper.
-
 ## Schema error reported but the mutation succeeded
 
 **Symptom**: a create/update tool returns a schema validation error listing undeclared fields, yet the task exists / state changed anyway.

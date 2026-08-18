@@ -15,8 +15,7 @@
  *   8. Generated-package E2E
  *   9. Integration harness setup
  *   10. Generated-package real composition
- *   11. Generic LKB real composition
- *   12. Strict bridge typecheck against the monorepo contracts
+ *   11. Strict bridge typecheck against the monorepo contracts
  *
  * Exits non-zero when any step fails.
  */
@@ -63,7 +62,6 @@ if (existsSync(join(monorepo, 'vendor/cordis/src/index.ts')) && existsSync(tsc))
   const integrationSteps = [
     ['integration harness setup', 'node', ['scripts/setup-integration.mjs']],
     ['REAL-composition (real Loader + real schemastery + real ToolRuntime)', 'node', ['--experimental-transform-types', 'tests/integration/real-composition.mjs']],
-    ['generic LKB composition (no codegen)', 'node', ['--experimental-transform-types', 'tests/integration/generic-plugin.mjs']],
     ['strict typecheck (tsc -b in monorepo)', 'node', ['scripts/typecheck-integration.mjs']],
   ]
   for (const [name, command, args, options] of integrationSteps) {

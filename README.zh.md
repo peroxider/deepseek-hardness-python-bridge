@@ -46,7 +46,7 @@ DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python �
 
 1. **Python 套件** —— 49 个 pytest，覆盖装饰器、PEP 484 类型推断、JSON-RPC 运行时、版本协商，以及真实子进程 stdio 集成。
 2. **离线 TypeScript E2E** —— 纯 Node 断言（无需安装依赖），覆盖 codegen 发射（55+ 断言）、运行时生命周期（worker-exit、重连、关停阶梯、环境清洗）、真实 `python3` 子进程往返、挂载在 stub Cordis context 上的通用插件，以及挂载在相同 stub 上的生成包。
-3. **REAL-composition** —— 测试用 `cordis.yml` 经真实 vendored Cordis Loader（`vendor/loader` + `vendor/include`）启动：真实 schemastery 应用生成的 `static Config`，真实 `ToolRuntime` 持有注册的工具，真实 `ctx.emit('session/event')` 到达 Python 监听器，`ctx.fiber.dispose()` 通过 effect disposer 拆毁子进程。通用插件与 codegen 两条路径都驱动同一个外部 LKB 示例经真实 ToolRuntime 端到端跑通。
+3. **REAL-composition** —— 测试用 `cordis.yml` 经真实 vendored Cordis Loader（`vendor/loader` + `vendor/include`）启动：真实 schemastery 应用插件配置，真实 `ToolRuntime` 持有注册的工具，真实 `ctx.emit('session/event')` 到达 Python 监听器，`ctx.fiber.dispose()` 通过 effect disposer 拆毁子进程。通用插件与 codegen 两条路径都驱动外部 Python 示例经真实 ToolRuntime 端到端跑通。
 4. **严格类型检查** —— `tsc -b`（typescript 6.0.3，monorepo `tsconfig.base.json` 标志：`strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`）覆盖三个 bridge 包和生成的示例包，在 monorepo project-reference 图中零错误。
 
 如实陈述的剩余限制：
@@ -109,17 +109,17 @@ scripts/verify.mjs                       一键离线验证
 当组合加载了 `@peroxider/dsh-python-bridge-runtime` 时，一行 `cordis.yml` 条目就是完整集成——无需 codegen、无需构建：
 
 ```yaml
-- id: lkb
+- id: sample
   name: '@peroxider/dsh-python-bridge'
   config:
     pythonBin: python3
-    module: lkb_dsh.bridge
-    pythonPath: [/path/to/lkb/src]
+    module: sample_dsh.bridge
+    pythonPath: [/path/to/sample/src]
     initArgs:
       board_id: main
 ```
 
-`initialize` 时通用插件读取 Python 运行时上报的 manifest，注册被装饰的 service（`ctx.lkb`）、每个 `@tool` 与每个 listener——工具 schema 原样取自装饰器。下文 codegen 步骤仍是无法加载 `.ts` 源码的部署获得可构建、自包含包的路径。
+`initialize` 时通用插件读取 Python 运行时上报的 manifest，注册被装饰的 service、每个 `@tool` 与每个 listener——工具 schema 原样取自装饰器。下文 codegen 步骤仍是无法加载 `.ts` 源码的部署获得可构建、自包含包的路径。
 
 ### 1. 编写 Python 模块
 
@@ -166,8 +166,8 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
 ```sh
 scripts/install-python-plugin.py \
   --source path/to/bridge.py \
-  --name '@my-org/lkb-bridge' \
-  --module lkb_dsh.bridge \
+  --name '@my-org/sample-bridge' \
+  --module sample_dsh.bridge \
   --python-src path/to/my-python/src \
   --config-json '{"boardId": "my-board"}'
 ```

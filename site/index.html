@@ -119,8 +119,8 @@ def audit(event: str, payload: dict) -&gt; None:
 <pre><code># One command: codegen → build → assemble → smoke → patch
 scripts/install-python-plugin.py \
   --source     path/to/bridge.py \
-  --name       '@my-org/lkb-bridge' \
-  --module     lkb_dsh.bridge \
+  --name       '@my-org/sample-bridge' \
+  --module     sample_dsh.bridge \
   --python-src path/to/my-python/src \
   --config-json '{"boardId": "my-board"}'
 </code></pre>

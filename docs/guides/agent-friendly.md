@@ -16,7 +16,6 @@ The skill's reference files are the deep documentation you should consult when a
 | --- | --- |
 | [`references/decorators.md`](../../skill/dsh-python-plugin/references/decorators.md) | Every decorator's exact contract (fields → config keys, optionality, type projection) |
 | [`references/pitfalls.md`](../../skill/dsh-python-plugin/references/pitfalls.md) | Symptom → cause → fix catalog; open it before debugging from scratch |
-| [`references/contracts.md`](../../skill/dsh-python-plugin/references/contracts.md) | Host-library runtime contracts (e.g. LKB `owner == actor` claim-before-start) |
 | [`references/manual-pipeline.md`](../../skill/dsh-python-plugin/references/manual-pipeline.md) | Fallback when the one-command installer cannot run |
 
 ## The task in one sentence
@@ -90,5 +89,4 @@ Match the symptom in [`references/pitfalls.md`](../../skill/dsh-python-plugin/re
 
 - **Never modify business code** — only the wrapper module. Business code runs unmodified when no bridge is attached.
 - **Never promise capability/guard/system-prompt features** — they parse but don't emit yet.
-- **Read the host library's contracts** (`references/contracts.md`) before writing a wrapper that calls into a library with ownership/lifecycle rules (e.g. LKB `owner == actor`).
 - **Report honestly**: if the installer couldn't run (no tsc / no dsh install) and you used the manual pipeline instead, say so; if you couldn't verify against a live instance, say so.

@@ -65,7 +65,6 @@ def resize_image(input_path: str, width: int) -> dict:
 ```
 
 - Tool functions are module-level. When a `@service` class exists in the same module, tools share the service's Python child process.
-- To share the service's configuration, have the service register itself module-globally on construction and let tools fall back to env vars otherwise (the `lkb_dsh/bridge.py` pattern: `_ACTIVE_CORE` + `LKB_*` env).
 
 ## `@on(event, mode='emit', prepend=False, global_=False)` — function decorator
 

@@ -36,8 +36,8 @@ Full install (all steps):
 
     scripts/install-python-plugin.py \
       --source /path/to/bridge.py \
-      --name '@my-org/lkb-bridge' \
-      --module lkb_dsh.bridge \
+      --name '@my-org/sample-bridge' \
+      --module sample_dsh.bridge \
       --python-path /path/to/python/src \
       --config-json '{"boardId": "my-board"}'
 
@@ -628,8 +628,8 @@ def parse_args() -> argparse.Namespace:
         epilog="Steps: " + ", ".join(STEPS) + " (default: all). See the module docstring for examples.",
     )
     parser.add_argument("--source", required=True, help="Path to the decorated Python module (bridge.py).")
-    parser.add_argument("--name", required=True, help="Generated package name, e.g. @my-org/lkb-bridge.")
-    parser.add_argument("--module", required=True, help="Python module path, e.g. lkb_dsh.bridge.")
+    parser.add_argument("--name", required=True, help="Generated package name, e.g. @my-org/sample-bridge.")
+    parser.add_argument("--module", required=True, help="Python module path, e.g. sample_dsh.bridge.")
     parser.add_argument(
         "--python-path",
         action="append",

@@ -62,7 +62,7 @@ Hard constraints the codegen parser enforces (violations are silently ignored â€
 - Method parameters and returns must be **JSON-serializable** (a dataclass return hangs the call; return plain dicts/lists/scalars â€” convert with `dataclasses.asdict()` or explicit field mapping).
 - Only the first `@service` class per module is emitted.
 
-Read `references/decorators.md` for the full decorator contract, and `references/contracts.md` for the host-library integration patterns (e.g. how to discover and honor ownership/lifecycle contracts like LKB's `owner == actor` rule). The `initialize` manifest schema the runtime reports (services, methods, tools, listeners) lives in `references/manifest.md`.
+Read `references/decorators.md` for the full decorator contract. The `initialize` manifest schema the runtime reports (services, methods, tools, listeners) lives in `references/manifest.md`.
 
 The shortest supported workflow is therefore:
 

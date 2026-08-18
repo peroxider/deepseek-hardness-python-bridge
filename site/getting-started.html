@@ -138,8 +138,8 @@ pnpm --filter @my-org/python-bridge-ml build
         </p>
 <pre><code>scripts/install-python-plugin.py \
   --source     path/to/bridge.py \
-  --name       '@my-org/lkb-bridge' \
-  --module     lkb_dsh.bridge \
+  --name       '@my-org/sample-bridge' \
+  --module     sample_dsh.bridge \
   --python-src path/to/my-python/src \
   --config-json '{"boardId": "my-board"}'
 </code></pre>
@@ -152,7 +152,7 @@ pnpm --filter @my-org/python-bridge-ml build
     </p>
     <dl class="flags">
       <dt><code>--source</code></dt><dd>Path to the decorated Python entry module. <strong>Required.</strong></dd>
-      <dt><code>--name</code></dt><dd>Plugin package name (e.g. <code>@my-org/lkb-bridge</code>). <strong>Required.</strong></dd>
+      <dt><code>--name</code></dt><dd>Plugin package name (e.g. <code>@my-org/sample-bridge</code>). <strong>Required.</strong></dd>
       <dt><code>--module</code></dt><dd>Dotted Python module path to import in the child runtime. <strong>Required.</strong></dd>
       <dt><code>--python-src</code></dt><dd>Repeatable. Path(s) to your Python source tree to bundle into the self-contained plugin dir.</dd>
       <dt><code>--plugin-dir</code></dt><dd>Where to assemble the plugin (default: derived from <code>--name</code>).</dd>

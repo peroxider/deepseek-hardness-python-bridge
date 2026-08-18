@@ -78,7 +78,7 @@ Choose the surface per capability:
 - Method parameters and returns must be **JSON-serializable** (a dataclass return hangs the call; return plain dicts/lists/scalars — convert with `dataclasses.asdict()` or explicit field mapping).
 - Only the first `@service` class per module is emitted; split additional services into separate modules.
 
-Read the full decorator contract in [`skill/dsh-python-plugin/references/decorators.md`](../../skill/dsh-python-plugin/references/decorators.md) and host-library contract patterns (e.g. LKB's `owner == actor` rule) in [`skill/dsh-python-plugin/references/contracts.md`](../../skill/dsh-python-plugin/references/contracts.md).
+Read the full decorator contract in [`skill/dsh-python-plugin/references/decorators.md`](../../skill/dsh-python-plugin/references/decorators.md) before wrapping a host library.
 
 ## Step 2 — Install (codegen → build → assemble → patch)
 
