@@ -1,0 +1,35 @@
+{
+  "name": "@peroxider/dsh-python-bridge-bundle",
+  "version": "0.0.1",
+  "description": "Out-of-tree dsh bundle that makes the Python Capability Bridge runtime available to profiles.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peroxider/deepseek-hardness-python-bridge.git",
+    "directory": "packages/bundle/python-bridge-bundle"
+  },
+  "license": "MIT",
+  "files": [
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md"
+  ],
+  "exports": {
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@peroxider/dsh-python-bridge": "^0.0.1",
+    "@peroxider/dsh-python-bridge-runtime": "^0.0.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-base": ">=0.0.1-rc.1"
+  }
+}

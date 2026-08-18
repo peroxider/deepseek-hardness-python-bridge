@@ -1,0 +1,6 @@
+# Makes the Python bridge runtime available to profiles that install this
+# out-of-tree bundle. The generic plugin remains a user-mounted row because
+# its module and Python import path are deployment-specific.
+- insert:
+    - id: python-bridge-runtime
+      name: '@peroxider/dsh-python-bridge-runtime'
