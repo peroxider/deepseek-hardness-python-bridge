@@ -5,7 +5,13 @@ description: Convert a Python module or codebase into a DeepSeek Harness (dsh) p
 
 # Convert a Python module into a dsh plugin
 
-The Python Capability Bridge lets a Python module become a first-class dsh plugin with zero changes to business code. This skill drives the conversion end to end. Two paths load the same decorated module: the **generic plugin** (`@peroxider/dsh-python-bridge`) needs no codegen and no build — one `cordis.yml` entry is the whole integration; the **codegen** path builds a self-contained TypeScript package with static per-module types. Start with the generic path (Step 2a); fall back to codegen when the install cannot resolve the bridge packages as source or you want typed TS surfaces (Step 2b).
+The Python Capability Bridge lets a Python module become a first-class dsh plugin with zero changes to business code. Install the released Python runtime from PyPI before loading a module:
+
+```sh
+python3 -m pip install dsh-python-bridge
+```
+
+This skill drives the conversion end to end. Both paths remain supported and consume the same decorated `bridge.py`: the **generic plugin** (`@peroxider/dsh-python-bridge`) is the current recommended path and needs no codegen or build — author `bridge.py`, add the bridge entries to `cordis.yml`, and point `pythonPath` at the module; the **codegen** path is the earlier, advanced deployment path that builds a self-contained TypeScript package with static per-module types. Start with the generic path (Step 2a); use codegen when the install cannot resolve the bridge packages, you need a self-contained artifact, or you want typed TS surfaces (Step 2b).
 
 The codegen pipeline:
 
@@ -49,11 +55,17 @@ Hard constraints the codegen parser enforces (violations are silently ignored �
 
 Read `references/decorators.md` for the full decorator contract, and `references/contracts.md` for the host-library integration patterns (e.g. how to discover and honor ownership/lifecycle contracts like LKB's `owner == actor` rule). The `initialize` manifest schema the runtime reports (services, methods, tools, listeners) lives in `references/manifest.md`.
 
+The shortest supported workflow is therefore:
+
+1. Write `bridge.py` with `dsh_bridge` decorators.
+2. Write `cordis.yml` with the runtime and generic plugin entries (or install the companion bundle, which supplies those entries' packages), including `pythonPath` when the module is outside the plugin directory.
+3. Start dsh. The generic plugin discovers the Python manifest at load time; no generated TypeScript package is required.
+
 ## Step 2 — Mount the plugin
 
 ### Step 2a — Generic path (zero-build, default)
 
-When the dsh install can resolve `@peroxider/dsh-python-bridge` and the runtime (source launch, or an install that ships them), one `cordis.patch.yml` entry is the whole integration — no codegen, no `tsc`:
+When the dsh install can resolve `@peroxider/dsh-python-bridge` and the runtime (for example through `@peroxider/dsh-python-bridge-bundle`), the generic path is the whole integration — no codegen, no `tsc`:
 
 ```yaml
 - id: <short>
@@ -65,6 +77,8 @@ When the dsh install can resolve `@peroxider/dsh-python-bridge` and the runtime 
     initArgs:
       <snake_case_field>: value
 ```
+
+If the runtime is not supplied by a bundle, add a separate `@peroxider/dsh-python-bridge-runtime` row before this entry. The generic path is the easier, newer authoring workflow; it does not remove or invalidate the codegen workflow below.
 
 The generic plugin reads the runtime manifest on `initialize` and registers the decorated service, tools, and listeners with the schemas the decorators declare. Prefer `pythonPath` (import roots) over copying source into the plugin dir when the business code must stay put.
 

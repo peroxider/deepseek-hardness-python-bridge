@@ -4,7 +4,13 @@ Use when `scripts/install-python-plugin.py` cannot run (missing tsc, missing dsh
 
 ## 0. Generic path (zero-build, default)
 
-When the dsh install can resolve `@peroxider/dsh-python-bridge` and the runtime (source launch, or an install that ships them), the pipeline collapses to one `cordis.patch.yml` entry — no codegen, no build:
+Install the released Python side first:
+
+```sh
+python3 -m pip install dsh-python-bridge
+```
+
+When the dsh install can resolve `@peroxider/dsh-python-bridge` and the runtime (for example through `@peroxider/dsh-python-bridge-bundle`), the pipeline is the newer zero-build path — no codegen, no build:
 
 ```yaml
 - insert:
@@ -21,6 +27,8 @@ When the dsh install can resolve `@peroxider/dsh-python-bridge` and the runtime 
 ```
 
 The generic plugin reads the runtime manifest on `initialize` and registers the decorated service, tools, and listeners with the decorator schemas; `pythonPath` supplies import roots so business source can stay put. Skip ahead to [5. verify](#5-verify). The codegen stages below produce the self-contained built package for installs that cannot resolve the bridge packages as source.
+
+The codegen stages remain supported for the earlier self-contained deployment workflow and for consumers that require generated static TypeScript types.
 
 ## 1. codegen — Python source → TS package
 
