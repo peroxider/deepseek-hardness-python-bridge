@@ -1,7 +1,7 @@
 {
   "name": "@peroxider/dsh-python-bridge",
   "description": "Generic Cordis plugin that registers Python bridge services, tools, and listeners from the runtime manifest.",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publishConfig": {
     "access": "public"
   },

@@ -288,7 +288,7 @@ const DEPENDENCY_MISSING_CODE = -32012
  * in `dsh_bridge.__version__` must happen together.
  */
 export const PYTHON_BRIDGE_CLIENT_NAME = 'dsh-python-bridge-runtime'
-export const PYTHON_BRIDGE_CLIENT_VERSION = '0.0.1'
+export const PYTHON_BRIDGE_CLIENT_VERSION = '0.0.3'
 
 /**
  * Interpreter probe results keyed by `pythonBin`. `dsh_bridge` presence is a
