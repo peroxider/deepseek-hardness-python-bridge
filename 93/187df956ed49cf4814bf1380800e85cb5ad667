@@ -1,0 +1,46 @@
+docs/promo/soft-article-python-bridge.md
+  s_1c8a9a13a48bf5::t_84bf4634e25f36 17-19
+  s_1c8a9a13a48bf5::t_9e9628bd084bc3 22,31,118-119,123,142-154
+  s_1c8a9a13a48bf5::t_a01b6bae8e8d5e 7-15,21,26,33-117,121,125-140,156
+  s_1c8a9a13a48bf5::t_053b57d0c41fe9 4-6
+  s_1c8a9a13a48bf5::t_b704e9fa455444 16
+  s_1c8a9a13a48bf5::t_2a87ed0f052516 20
+  s_1c8a9a13a48bf5::t_5e8388cb239649 23-25
+  s_1c8a9a13a48bf5::t_99d92edd34586b 27-30
+  s_1c8a9a13a48bf5::t_c94d07b98cf37e 32
+  s_1c8a9a13a48bf5::t_b3dc01ba020775 120
+  s_1c8a9a13a48bf5::t_22de96b5c3861a 122
+  s_1c8a9a13a48bf5::t_ddc13e3e295ae6 124
+  s_1c8a9a13a48bf5::t_3812649253aefd 141
+  s_1c8a9a13a48bf5::t_73029edadb967e 155
+  s_1c8a9a13a48bf5::t_a7652df8ddf1ce 157-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "93187df956ed49cf4814bf1380800e85cb5ad667",
+  "prompts": {},
+  "sessions": {
+    "s_1c8a9a13a48bf5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7fd6df67cc072c849c6c3b",
+        "model": "DeepSeek-V4-Flash-Official"
+      },
+      "human_author": "chadweng <wengxutao01@163.com>",
+      "custom_attributes": {
+        "dedupe_key": "6a7fd6df67cc072c849c6c3b:6a7fe22f67cc072c849c709d:afterEdit:7c534340",
+        "external_session_id": "6a7fd6df67cc072c849c6c3b",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "client_type": "ide",
+        "runtime_client": "trae-tob-git-ai",
+        "session_id": "6a7fd6df67cc072c849c6c3b",
+        "tool_use_id": "6a7fe22f67cc072c849c709d",
+        "operation_id": "6a7fe22f67cc072c849c709d",
+        "tool_type": "builtin",
+        "edit_kind": "file_edit",
+        "source_scene": "agent"
+      }
+    }
+  }
+}
