@@ -44,7 +44,7 @@ DeepSeek Harness's plugin surface is TypeScript-only. This bridge is the path th
 
 The premise is proven by four verification tiers, all reproducible offline via `node scripts/verify.mjs`:
 
-1. **Python suite** — 49 pytest tests covering decorators, PEP 484 type inference, the JSON-RPC runtime, real-subprocess integration over stdio, version negotiation, and the enriched `initialize` manifest (tool schemas, method annotations, service init fields, listener function names).
+1. **Python suite** — 53 pytest tests covering decorators, PEP 484 type inference (including the PEP 563 `from __future__ import annotations` case), the JSON-RPC runtime, real-subprocess integration over stdio, version negotiation, and the enriched `initialize` manifest (tool schemas, method annotations, service init fields, listener function names).
 2. **Offline TypeScript E2E** — plain-Node assertions (no package install) covering codegen emission (55+ assertions), runtime lifecycle (worker-exit, reconnect, teardown ladder, env scrub), a real `python3` child round-trip, the generic plugin mounting on a stub Cordis context, and a generated package mounted on the same stub.
 3. **REAL-composition** — a test `cordis.yml` boots through the genuine vendored Cordis Loader (`vendor/loader` + `vendor/include`), with real schemastery applying plugin config, the real `ToolRuntime` holding registered tools, a real `ctx.emit('session/event')` reaching the Python listener, and `ctx.fiber.dispose()` tearing the child down through effect disposers. Both the generic plugin and codegen path drive an external Python example end-to-end.
 4. **Strict typecheck** — `tsc -b` (typescript 6.0.3, monorepo `tsconfig.base.json` flags: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) over the three bridge packages and a generated example package inside the monorepo's project-reference graph: zero errors.
@@ -64,7 +64,7 @@ python/sdk-dsl/                          dsh-python-bridge PyPI package: decorat
   src/dsh_bridge/runtime.py                python -u -m dsh_bridge.runtime <module> entry point
   src/dsh_bridge/_type_inference.py        PEP 484 → JSON Schema inference
   src/dsh_bridge/_errors.py                exception → JSON-RPC code/kind vocabulary
-  tests/                                   pytest: unit + real-subprocess integration (49 tests)
+  tests/                                   pytest: unit + real-subprocess integration (53 tests)
 packages/bridge/
   python-bridge-runtime/                 @peroxider/dsh-python-bridge-runtime
     src/index.ts                           PythonBridgeService (ctx.pythonBridge) + PythonBridge client
@@ -225,7 +225,7 @@ The steps are decoupled — each consumes artifacts the previous one left on dis
 # compositions and strict typecheck when a monorepo checkout and tsc exist):
 node scripts/verify.mjs
 
-# Python only: 49 tests (decorators, type inference, runtime, real-subprocess integration)
+# Python only: 53 tests (decorators, type inference, runtime, real-subprocess integration)
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # Example smoke test (no bridge required)

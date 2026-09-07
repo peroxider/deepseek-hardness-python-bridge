@@ -44,7 +44,7 @@ DeepSeek Harness 的插件面是纯 TypeScript 的。本 bridge 是把 Python �
 
 本仓库的前提由四层验证支撑，均可通过 `node scripts/verify.mjs` 离线复现：
 
-1. **Python 套件** —— 49 个 pytest，覆盖装饰器、PEP 484 类型推断、JSON-RPC 运行时、版本协商，以及真实子进程 stdio 集成。
+1. **Python 套件** —— 53 个 pytest，覆盖装饰器、PEP 484 类型推断（含 PEP 563 `from __future__ import annotations` 场景）、JSON-RPC 运行时、版本协商，以及真实子进程 stdio 集成。
 2. **离线 TypeScript E2E** —— 纯 Node 断言（无需安装依赖），覆盖 codegen 发射（55+ 断言）、运行时生命周期（worker-exit、重连、关停阶梯、环境清洗）、真实 `python3` 子进程往返、挂载在 stub Cordis context 上的通用插件，以及挂载在相同 stub 上的生成包。
 3. **REAL-composition** —— 测试用 `cordis.yml` 经真实 vendored Cordis Loader（`vendor/loader` + `vendor/include`）启动：真实 schemastery 应用插件配置，真实 `ToolRuntime` 持有注册的工具，真实 `ctx.emit('session/event')` 到达 Python 监听器，`ctx.fiber.dispose()` 通过 effect disposer 拆毁子进程。通用插件与 codegen 两条路径都驱动外部 Python 示例经真实 ToolRuntime 端到端跑通。
 4. **严格类型检查** —— `tsc -b`（typescript 6.0.3，monorepo `tsconfig.base.json` 标志：`strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`）覆盖三个 bridge 包和生成的示例包，在 monorepo project-reference 图中零错误。
@@ -64,7 +64,7 @@ python/sdk-dsl/                          dsh-bridge PyPI 包：装饰器 + 运�
   src/dsh_bridge/runtime.py                python -u -m dsh_bridge.runtime <module> 入口
   src/dsh_bridge/_type_inference.py        PEP 484 → JSON Schema 推断
   src/dsh_bridge/_errors.py                异常 → JSON-RPC code/kind 词典
-  tests/                                   pytest：单元 + 真实子进程集成（49 个测试）
+  tests/                                   pytest：单元 + 真实子进程集成（53 个测试）
 packages/bridge/
   python-bridge-runtime/                 @peroxider/dsh-python-bridge-runtime
     src/index.ts                           PythonBridgeService（ctx.pythonBridge）+ PythonBridge 客户端
@@ -224,7 +224,7 @@ scripts/install-python-plugin.py \
 # 真实子进程与生成包 E2E；monorepo 与 tsc 可用时再运行真实组合和严格类型检查）：
 node scripts/verify.mjs
 
-# 仅 Python：49 个测试（装饰器、类型推断、运行时、真实子进程集成）
+# 仅 Python：53 个测试（装饰器、类型推断、运行时、真实子进程集成）
 cd python/sdk-dsl && PYTHONPATH=src python3 -m pytest tests/
 
 # 示例 smoke test（无需 bridge）

@@ -4,16 +4,38 @@ The codegen reads `__annotations__` off decorated functions and methods; this
 suite asserts the supported subset produces the right JSON Schema and TS
 shapes (the TS side is mirrored here as the spec calls them out).
 
-Note: tests deliberately omit `from __future__ import annotations` so PEP 484
-type expressions are evaluated eagerly and the runtime `__annotations__`
-mapping carries real type objects (not PEP 563 strings).
+Note: tests in this module deliberately omit `from __future__ import
+annotations` so PEP 484 type expressions are evaluated eagerly and the runtime
+`__annotations__` mapping carries real type objects (not PEP 563 strings). The
+PEP 563 case is covered separately via the `fixture_module/pep563_types.py`
+fixture, whose annotations are resolved through `typing.get_type_hints`.
 """
 
+import importlib.util
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Union
 
-from dsh_bridge._type_inference import python_type_to_json_schema
+from dsh_bridge._type_inference import _dataclass_schema, python_type_to_json_schema
+
+_FIXTURES = Path(__file__).resolve().parent / "fixture_module"
+
+
+def _pep563_module():
+    """Load the PEP 563 fixture module.
+
+    The module is registered in `sys.modules` so `typing.get_type_hints` can
+    resolve its annotations against the module's own globals.
+    """
+    name = "pep563_types"
+    module = sys.modules.get(name)
+    if module is None:
+        spec = importlib.util.spec_from_file_location(name, _FIXTURES / f"{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+    return module
 
 
 def test_primitives():
@@ -115,3 +137,51 @@ def test_python_310_union_syntax():
         pass
     schema = python_type_to_json_schema(f.__annotations__)
     assert schema["x"] == {"oneOf": [{"type": "integer"}, {"type": "string"}]}
+
+
+def test_pep563_dataclass_resolves_string_annotations():
+    """`from __future__ import annotations` stores raw annotation strings on
+    `field.type`; the inference must resolve them instead of degrading every
+    field to `string`."""
+    module = _pep563_module()
+    assert _dataclass_schema(module.Config) == {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "count": {"type": "integer"},
+            "ratio": {"type": "number"},
+            "tags": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["name", "count"],
+    }
+
+
+def test_pep563_dataclass_param_resolved_via_owner():
+    """The `owner` argument lets the entry point resolve PEP 563 strings,
+    including a nested dataclass parameter."""
+    module = _pep563_module()
+    schema = python_type_to_json_schema(module.build.__annotations__, owner=module.build)
+    assert schema["config"]["type"] == "object"
+    assert schema["config"]["properties"]["count"] == {"type": "integer"}
+    assert schema["limit"] == {"oneOf": [{"type": "integer"}, {"type": "null"}]}
+
+
+def test_pep563_strings_without_owner_degrade_to_string():
+    """Without an owner there is no namespace to resolve strings against; the
+    inference degrades to plain string rather than guessing."""
+    module = _pep563_module()
+    schema = python_type_to_json_schema(module.build.__annotations__)
+    assert schema["config"] == {"type": "string"}
+    assert schema["limit"] == {"type": "string"}
+
+
+def test_pep563_unresolvable_forward_ref_degrades_gracefully():
+    """A `TYPE_CHECKING`-style unimportable annotation fails wholesale hint
+    resolution; fields degrade to `string` and requiredness survives."""
+    module = _pep563_module()
+    schema = _dataclass_schema(module.WithGhostRef)
+    assert schema["properties"] == {
+        "ok_count": {"type": "string"},
+        "ghost": {"type": "string"},
+    }
+    assert schema["required"] == ["ok_count", "ghost"]

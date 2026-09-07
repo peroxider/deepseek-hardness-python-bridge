@@ -87,11 +87,31 @@ def _schema_for_annotation(value: Any) -> dict[str, Any]:
 _MISSING_SENTINEL = object()
 
 
+def _resolved_type_hints(obj: Any) -> dict[str, Any]:
+    """Resolve `obj`'s annotations to runtime types, PEP 563-safe.
+
+    Under `from __future__ import annotations`, `field.type` / `__annotations__`
+    hold the raw annotation strings (e.g. `"int"`), which the inference cannot
+    interpret on its own; `typing.get_type_hints` evaluates them against the
+    owner's module globals. Unresolvable forward references (e.g. a
+    `TYPE_CHECKING`-only import) raise, so callers get `{}` back and degrade
+    to the raw strings per field instead of crashing.
+    """
+    try:
+        return typing.get_type_hints(obj)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def _dataclass_schema(cls: type) -> dict[str, Any]:
+    hints = _resolved_type_hints(cls)
     properties: dict[str, Any] = {}
     required: list[str] = []
     for field in fields(cls):
-        annotation = field.type
+        # Under PEP 563 `field.type` is the raw annotation string; prefer the
+        # resolved hint and fall back to the raw string only when wholesale
+        # resolution failed, so the field degrades instead of crashing.
+        annotation = hints.get(field.name, field.type)
         try:
             properties[field.name] = _schema_for_annotation(annotation)
         except Exception:  # noqa: BLE001
@@ -134,12 +154,24 @@ def _is_pydantic(cls: type) -> bool:
     return False
 
 
-def python_type_to_json_schema(annotations: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def python_type_to_json_schema(
+    annotations: dict[str, Any], *, owner: Any = None
+) -> dict[str, dict[str, Any]]:
     """Project a `__annotations__` mapping onto a per-parameter JSON Schema dict.
 
     @param annotations - a function's `__annotations__` mapping.
+    @param owner - optional object the annotations were declared on (function,
+                   class, or module). Under `from __future__ import annotations`
+                   the mapping carries raw strings that only the owner's module
+                   namespace can resolve; pass the owner so
+                   `typing.get_type_hints` can evaluate them. Without an owner,
+                   string annotations degrade to plain string schemas.
     @returns `{parameter_name: json_schema}` with one entry per declared parameter.
     """
+    if owner is not None:
+        hints = _resolved_type_hints(owner)
+        if hints:
+            annotations = hints
     out: dict[str, dict[str, Any]] = {}
     for name, annotation in annotations.items():
         if name == "return":
