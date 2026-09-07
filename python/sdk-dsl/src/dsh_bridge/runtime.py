@@ -52,6 +52,7 @@ from ._bridge_metadata import (
     ToolMetadata,
     get_registry,
 )
+from ._type_inference import _dataclass_schema
 from ._errors import (
     BRIDGE_ERROR_KIND_MAP,
     PythonBridgeError,
@@ -471,6 +472,18 @@ def _provide_method_manifest(metadata: ProvideMethodMetadata) -> dict[str, Any]:
     }
 
 
+def _service_config_schema(cls: type) -> dict[str, Any]:
+    """Return a `configSchema` JSON Schema for a `@service`-decorated dataclass.
+
+    Dataclass services get a real JSON Schema for their Config (resolved from
+    PEP 484 hints via `_dataclass_schema`); non-dataclass services return an
+    empty dict so the caller can merge the entry without a conditional.
+    """
+    if not is_dataclass(cls):
+        return {}
+    return {"configSchema": _dataclass_schema(cls)}
+
+
 # ---------------------------------------------------------------------------
 # Server — orchestrates the transport, router, dispatcher, and event routing.
 # ---------------------------------------------------------------------------
@@ -614,7 +627,12 @@ class _Server:
             return
         manifest = {
             "services": [
-                {"name": m.name, "class": m.cls.__name__, "initFields": _service_init_fields(m.cls)}
+                {
+                    "name": m.name,
+                    "class": m.cls.__name__,
+                    "initFields": _service_init_fields(m.cls),
+                    **_service_config_schema(m.cls),
+                }
                 for m in self._registry.services.values()
             ],
             "provideMethods": [_provide_method_manifest(m) for m in self._registry.provide_methods],

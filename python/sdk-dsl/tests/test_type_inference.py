@@ -17,7 +17,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
 
-from dsh_bridge._type_inference import _dataclass_schema, python_type_to_json_schema
+import pytest
+
+from dsh_bridge._type_inference import (
+    _dataclass_schema,
+    infer_tool_parameters,
+    python_type_to_json_schema,
+)
 
 _FIXTURES = Path(__file__).resolve().parent / "fixture_module"
 
@@ -185,3 +191,39 @@ def test_pep563_unresolvable_forward_ref_degrades_gracefully():
         "ghost": {"type": "string"},
     }
     assert schema["required"] == ["ok_count", "ghost"]
+
+
+def test_infer_tool_parameters_helper_eager():
+    """`infer_tool_parameters` returns the same per-parameter JSON Schema the
+    helper would compute via `python_type_to_json_schema` for eagerly-evaluated
+    annotations."""
+
+    def f(a: int, b: str = "x") -> None:
+        pass
+
+    assert infer_tool_parameters(f) == {
+        "a": {"type": "integer"},
+        "b": {"type": "string"},
+    }
+
+
+def test_infer_tool_parameters_helper_pep563_via_owner():
+    """The helper must pass `func` itself as the `owner` so PEP 563 string
+    annotations resolve through the function's defining module globals —
+    otherwise nested dataclasses degrade to `string`."""
+    module = _pep563_module()
+    schema = infer_tool_parameters(module.build)
+    assert schema["config"]["type"] == "object"
+    assert schema["config"]["properties"]["count"] == {"type": "integer"}
+    assert schema["limit"] == {"oneOf": [{"type": "integer"}, {"type": "null"}]}
+
+
+def test_infer_tool_parameters_helper_no_annotations_raises():
+    """A function with no parameter annotations has nothing to infer from —
+    the helper raises a clear error so authors get actionable feedback."""
+
+    def f():
+        return 42
+
+    with pytest.raises(ValueError, match="cannot infer parameters"):
+        infer_tool_parameters(f)

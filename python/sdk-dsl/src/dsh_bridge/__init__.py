@@ -30,6 +30,7 @@ from ._bridge_metadata import (
     reset_registry,
 )
 from ._errors import PythonBridgeError, BRIDGE_ERROR_KIND_MAP
+from ._type_inference import infer_tool_parameters
 
 __version__ = "0.0.1"
 
@@ -144,7 +145,7 @@ def tool(
     *,
     name: str,
     description: str,
-    parameters: dict,
+    parameters: dict | None = None,
     output_schema: dict | None = None,
     timeout_ms: int | None = None,
 ):
@@ -157,17 +158,23 @@ def tool(
     @param name - the tool name registered with the tools service.
     @param description - the tool description rendered in the model prompt.
     @param parameters - JSON Schema describing the tool's input parameters.
+                        When omitted, the schema is inferred from the function's
+                        PEP 484 annotations via
+                        `dsh_bridge._type_inference.infer_tool_parameters`
+                        (which raises when the function carries no parameter
+                        annotations).
     @param output_schema - optional JSON Schema describing the tool's output
                            (advisory; not enforced by the codegen).
     @param timeout_ms - optional per-call timeout in milliseconds.
     """
 
     def decorator(func):
+        resolved_parameters = parameters if parameters is not None else infer_tool_parameters(func)
         registry = get_registry()
         metadata = ToolMetadata(
             name=name,
             description=description,
-            parameters=parameters,
+            parameters=resolved_parameters,
             output_schema=output_schema,
             timeout_ms=timeout_ms,
             func=func,

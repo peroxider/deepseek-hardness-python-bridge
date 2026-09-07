@@ -75,6 +75,33 @@ def test_tool_records_metadata():
     assert metadata.parameters == {"width": {"type": "integer"}}
 
 
+def test_tool_infers_parameters_from_signature():
+    """When `parameters` is omitted, `@tool` derives the JSON Schema from the
+    function's PEP 484 annotations via `infer_tool_parameters`."""
+
+    @tool(name="greet", description="greet a user")
+    def greet(name: str, excited: bool = False) -> str:
+        return f"hi {name}"
+
+    metadata = get_registry().tools[0]
+    assert metadata.parameters == {
+        "name": {"type": "string"},
+        "excited": {"type": "boolean"},
+    }
+
+
+def test_tool_inference_requires_parameter_annotations():
+    """Inferring parameters from a function without annotations is an authoring
+    error — `@tool` raises a clear ValueError rather than emitting an empty
+    schema silently."""
+
+    with pytest.raises(ValueError, match="cannot infer parameters"):
+
+        @tool(name="opaque", description="")
+        def opaque(*args, **kwargs):
+            return args, kwargs
+
+
 def test_tool_rejects_duplicate_names():
     @tool(name="dup", description="", parameters={})
     def first():

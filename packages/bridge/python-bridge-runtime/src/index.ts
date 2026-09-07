@@ -93,6 +93,10 @@ export interface PythonBridgeManifest {
     class: string
     /** Dataclass constructor fields; empty for non-dataclass classes. */
     initFields: PythonBridgeInitField[]
+    /** JSON Schema for the Config dataclass when `@service` decorates a dataclass;
+     *  omitted for non-dataclass services. Resolved from PEP 484 hints via the
+     *  Python `_type_inference` projector. */
+    configSchema?: Record<string, unknown>
   }>
   provideMethods: Array<{
     name: string

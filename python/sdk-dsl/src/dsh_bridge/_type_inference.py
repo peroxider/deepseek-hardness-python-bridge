@@ -181,3 +181,26 @@ def python_type_to_json_schema(
             continue
         out[name] = _schema_for_annotation(annotation)
     return out
+
+
+def infer_tool_parameters(func: Any) -> dict[str, Any]:
+    """Project a tool function's parameter annotations onto a JSON Schema dict.
+
+    Thin wrapper around `python_type_to_json_schema` for the `@tool`
+    decorator's default-parameter inference path. Raises a clear error when
+    the function carries no parameter annotations the caller could rely on.
+
+    @param func - the tool function whose signature supplies annotations.
+    @returns `{parameter_name: json_schema}` with one entry per declared parameter.
+    @raises ValueError when the function has no parameter annotations.
+    """
+    annotations = getattr(func, "__annotations__", None) or {}
+    params = {k: v for k, v in annotations.items() if k != "return"}
+    if not params:
+        qualname = getattr(func, "__qualname__", repr(func))
+        raise ValueError(
+            f"dsh_bridge.tool: cannot infer parameters for {qualname!r} — "
+            "the function carries no parameter annotations. Pass an explicit "
+            "`parameters=...` JSON Schema or add type hints to the signature."
+        )
+    return python_type_to_json_schema(annotations, owner=func)

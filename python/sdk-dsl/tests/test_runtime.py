@@ -409,6 +409,71 @@ def test_server_initialize_non_dataclass_service_has_empty_init_fields():
     assert frames[0]["result"]["manifest"]["services"][0]["initFields"] == []
 
 
+def test_server_initialize_manifest_includes_config_schema_for_dataclass_service():
+    """A `@service`-decorated dataclass surfaces a `configSchema` JSON Schema
+    derived from its PEP 484 annotations, so the TypeScript side can render a
+    Config UI / schemastery without re-deriving the shape."""
+
+    @service(name="configured")
+    @dataclass
+    class ConfiguredProvider:
+        greeting: str = "hello"
+        retries: int = 3
+
+        @provide_method()
+        def ping(self) -> str:
+            return self.greeting
+
+    registry = get_registry()
+    router = _Router(registry, ConfiguredProvider(), [])
+    router.build()
+    transport = _StdioTransport(stdin=io.StringIO(), stdout=io.StringIO())
+    dispatcher = _Dispatcher(router, transport)
+    server = _Server(router, transport, dispatcher, registry)
+
+    sink = io.StringIO()
+    transport._stdout = sink
+    server._handle_frame(json.loads(_build_request("initialize", {}, request_id="i1")))
+
+    frames = [json.loads(line) for line in sink.getvalue().split("\n") if line]
+    service_entry = frames[0]["result"]["manifest"]["services"][0]
+    assert service_entry["name"] == "configured"
+    assert service_entry["configSchema"] == {
+        "type": "object",
+        "properties": {
+            "greeting": {"type": "string"},
+            "retries": {"type": "integer"},
+        },
+        "required": [],
+    }
+
+
+def test_server_initialize_non_dataclass_service_omits_config_schema():
+    """A non-dataclass `@service` produces no `configSchema` entry; its
+    constructor is opaque to the bridge."""
+
+    @service(name="plain")
+    class PlainProvider:
+        @provide_method()
+        def ping(self) -> str:
+            return "pong"
+
+    registry = get_registry()
+    router = _Router(registry, PlainProvider(), [])
+    router.build()
+    transport = _StdioTransport(stdin=io.StringIO(), stdout=io.StringIO())
+    dispatcher = _Dispatcher(router, transport)
+    server = _Server(router, transport, dispatcher, registry)
+
+    sink = io.StringIO()
+    transport._stdout = sink
+    server._handle_frame(json.loads(_build_request("initialize", {}, request_id="i1")))
+
+    frames = [json.loads(line) for line in sink.getvalue().split("\n") if line]
+    service_entry = frames[0]["result"]["manifest"]["services"][0]
+    assert "configSchema" not in service_entry
+
+
 def test_server_handles_event_notification_for_registered_listener():
     captured: list[tuple[str, dict]] = []
 
