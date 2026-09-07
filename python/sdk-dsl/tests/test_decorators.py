@@ -64,7 +64,7 @@ def test_tool_records_metadata():
         name="resize",
         description="resize an image",
         parameters={"width": {"type": "integer"}},
-        output_schema={"type": "object"},
+        output_schema={"type": "object", "additionalProperties": False, "properties": {}},
     )
     def resize(width: int) -> dict:
         return {"width": width}
@@ -100,6 +100,46 @@ def test_tool_inference_requires_parameter_annotations():
         @tool(name="opaque", description="")
         def opaque(*args, **kwargs):
             return args, kwargs
+
+
+def test_tool_rejects_output_schema_without_additional_properties():
+    """`@tool` rejects output schemas whose object fragments omit
+    `additionalProperties`, since the dsh-tools compiler rejects the same
+    schemas at runtime."""
+
+    with pytest.raises(ValueError, match="additionalProperties"):
+
+        @tool(
+            name="narrow",
+            description="",
+            parameters={"width": {"type": "integer"}},
+            output_schema={"type": "object", "properties": {"width": {"type": "integer"}}},
+        )
+        def narrow(width: int) -> dict:
+            return {"width": width}
+
+
+def test_tool_rejects_output_schema_missing_additional_properties_nested():
+    """Validation walks into nested object schemas (`properties.*`, `items`,
+    `oneOf`, `anyOf`, `allOf`) so a missing `additionalProperties` deep inside
+    the document is still caught at import time."""
+
+    with pytest.raises(ValueError, match=r"\$\.properties\.payload"):
+
+        @tool(
+            name="nested",
+            description="",
+            parameters={},
+            output_schema={
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "payload": {"type": "object", "properties": {"x": {"type": "integer"}}},
+                },
+            },
+        )
+        def nested() -> dict:
+            return {"payload": {"x": 1}}
 
 
 def test_tool_rejects_duplicate_names():

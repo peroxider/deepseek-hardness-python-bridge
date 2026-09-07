@@ -209,6 +209,6 @@ export default MlService
 ## 排错
 
 - **spawn 时报 `dependency-missing`（`-32012`）** —— 配置的 `pythonBin` 无法 `import dsh_bridge`；错误信息会指明解释器与模块。用 `pip install dsh-bridge` 安装到该解释器（或把 `pythonBin` 指向正确的解释器）。bridge 在 spawn 前先探测，因此会立即暴露问题，而不是表现为 `worker-exit`。
-- **调用后报 `bridge-down`** —— Python 子进程已退出；查看 stderr 的堆栈并确认 `pipDeps` 已安装。
+- **调用后报 `bridge-down`** —— Python 子进程已退出；查看 stderr 的堆栈并确认 `pipDeps` 已安装。注意：bridge 本身永远不会安装 `pipDeps`，运维必须在 `spawn()` 之前把目标解释器准备好（基础镜像、requirements 文件，或在部署阶段 `pip install`）。
 - **方法调用返回 `-32601` method not found** —— 确认 `@provide_method` 装饰器位于 `@service` 装饰的类内。
 - **正确调用却得到 `-32004` invalid-args** —— TypeScript 端的 JSON Schema 拒绝了输入；检查参数类型并重新运行 codegen。

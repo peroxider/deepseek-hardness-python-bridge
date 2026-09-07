@@ -56,7 +56,13 @@ export interface PythonBridgeSpawnSpec {
   functions?: string[]
   /** Optional JSON-serializable object forwarded as `__init__` kwargs to the class. */
   initArgs?: Record<string, unknown>
-  /** pip dependencies the deployment must provide (advisory; never auto-installed). */
+  /**
+   * pip dependencies the deployment must provide in the target interpreter
+   * (advisory only — never auto-installed by the bridge). Operators must
+   * install these into `pythonBin` ahead of time (e.g. via the deployment's
+   * base image or a requirements file); the bridge surfaces `ImportError`
+   * traces but does not invoke `pip install`.
+   */
   pipDeps?: string[]
   /** Python interpreter binary (default: `python`). */
   pythonBin?: string
@@ -604,7 +610,20 @@ export class PythonBridge {
       return argv
     }
     const sandbox = this.ctx.get?.('sandbox') as SandboxProvider | undefined
-    if (!sandbox) return argv
+    if (!sandbox) {
+      // Misconfiguration: a non-default sandbox policy was requested but the
+      // `@deepseek-ai/dsh-sandbox` seam is not loaded into this Cordis ctx.
+      // The bridge cannot silently bypass — emit a warning so operators
+      // notice the unconfined run.
+      console.warn(
+        `[python-bridge] sandbox policy ${JSON.stringify(this.spec.sandbox)} ` +
+          `requested for module ${JSON.stringify(this.spec.module)} but ` +
+          `ctx.get('sandbox') is undefined; spawning the Python child ` +
+          `unconfined. Load @deepseek-ai/dsh-sandbox and register the seam ` +
+          `on the Cordis context to enable confinement.`,
+      )
+      return argv
+    }
     const policy: SandboxPolicy = {
       mode: this.spec.sandbox,
       workspaceRoot: resolve(this.spec.cwd ?? process.cwd()),

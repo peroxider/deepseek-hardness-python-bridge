@@ -13,6 +13,7 @@ decorated callables when the TypeScript side spawns the Python process.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from ._bridge_metadata import (
     BridgeMetadata,
@@ -163,13 +164,19 @@ def tool(
                         `dsh_bridge._type_inference.infer_tool_parameters`
                         (which raises when the function carries no parameter
                         annotations).
-    @param output_schema - optional JSON Schema describing the tool's output
-                           (advisory; not enforced by the codegen).
+    @param output_schema - optional JSON Schema describing the tool's output.
+                           Every object schema in this document must declare
+                           `additionalProperties: false` (or `true`) — the
+                           dsh-tools schema compiler rejects schemas that
+                           leave the field implicit, so this decorator
+                           surfaces the same error at import time.
     @param timeout_ms - optional per-call timeout in milliseconds.
     """
 
     def decorator(func):
         resolved_parameters = parameters if parameters is not None else infer_tool_parameters(func)
+        if output_schema is not None:
+            _validate_output_schema(output_schema, path="$")
         registry = get_registry()
         metadata = ToolMetadata(
             name=name,
@@ -332,3 +339,50 @@ def restrict_tools(*, allow: list[str] | None = None, deny: list[str] | None = N
 
 # Module-level logger for diagnostics surfaced through the bridge notify channel.
 logger = logging.getLogger("dsh_bridge")
+
+
+# JSON Schema keys whose value carries sub-schemas we must recurse into.
+def _validate_output_schema(schema: Any, *, path: str) -> None:
+    """Reject `@tool` output schemas the dsh-tools compiler cannot consume.
+
+    The compiler requires every object schema to carry an explicit
+    `additionalProperties: true|false`; a missing field fails at runtime
+    with `unsupported JSON schema: schema.additionalProperties must be
+    explicitly true or false`. Surfacing the same constraint here means
+    authors see a clear error at module-import time instead of a confusing
+    runtime failure inside the TypeScript side.
+
+    @param schema - the schema fragment to validate. Must be a dict; a
+                    non-dict scalar schema (e.g. a JSON Schema reference) is
+                    accepted as-is since the compiler handles it.
+    @param path - JSON-Pointer-ish location for error messages.
+    @raises ValueError when an object schema lacks explicit
+                       `additionalProperties`.
+    """
+    if not isinstance(schema, dict):
+        return
+    if schema.get("type") == "object" and "additionalProperties" not in schema:
+        raise ValueError(
+            f"dsh_bridge.tool: output_schema at {path} is an object without "
+            "explicit `additionalProperties` (must be true or false). The "
+            "dsh-tools schema compiler rejects implicit values at runtime; "
+            "add `\"additionalProperties\": false` (or true) here."
+        )
+    # `properties` is `{name: sub_schema}` — recurse into each sub-schema.
+    for field_name, sub in (schema.get("properties") or {}).items():
+        _validate_output_schema(sub, path=f"{path}.properties.{field_name}")
+    # `items` is a single sub-schema (or, for tuple-form, an array of schemas).
+    items = schema.get("items")
+    if isinstance(items, dict):
+        _validate_output_schema(items, path=f"{path}.items")
+    elif isinstance(items, list):
+        for index, sub in enumerate(items):
+            _validate_output_schema(sub, path=f"{path}.items[{index}]")
+    # `additionalProperties` may be a bool (no recursion) or a sub-schema.
+    extra = schema.get("additionalProperties")
+    if isinstance(extra, dict):
+        _validate_output_schema(extra, path=f"{path}.additionalProperties")
+    # Combinators: each entry is a sub-schema.
+    for key in ("oneOf", "anyOf", "allOf"):
+        for index, sub in enumerate(schema.get(key) or []):
+            _validate_output_schema(sub, path=f"{path}.{key}[{index}]")

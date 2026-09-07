@@ -209,6 +209,6 @@ export default MlService
 ## Troubleshooting
 
 - **`dependency-missing` at spawn (`-32012`)** — the configured `pythonBin` cannot `import dsh_bridge`; the error names the interpreter and the module. Install the runtime with `pip install dsh-bridge` into that interpreter (or point `pythonBin` at the right one). The bridge probes before spawning, so this surfaces immediately instead of as a `worker-exit`.
-- **`bridge-down` after a call** — the Python child exited; check stderr for the traceback and verify `pipDeps` is installed.
+- **`bridge-down` after a call** — the Python child exited; check stderr for the traceback and verify `pipDeps` is installed. Note: the bridge never installs `pipDeps` itself — operators must provision the target interpreter (base image, requirements file, or `pip install` during deploy) before `spawn()`.
 - **Method calls return `-32601` method not found** — confirm the `@provide_method` decorator sits inside a `@service`-decorated class.
 - **`-32004` invalid-args on a correct call** — the JSON Schema on the TypeScript side rejected the input; review the parameter types and re-run codegen.
