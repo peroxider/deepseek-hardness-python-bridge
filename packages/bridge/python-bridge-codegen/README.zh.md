@@ -37,7 +37,7 @@ const artifacts = generateBridgePackage({
 
 ## 类型推断
 
-生成器与 Python `dsh_bridge._type_inference` 的子集对齐：
+生成器自带 PEP 484 → TypeScript 投影器（`pythonTypeToTs`），下表覆盖与 Python `dsh_bridge._type_inference` 同一子集；两者实现相互独立——codegen 仅读取源码文本，不会调用 Python 模块：
 
 | Python 注解 | TypeScript |
 | --- | --- |

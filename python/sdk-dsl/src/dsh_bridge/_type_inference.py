@@ -1,9 +1,12 @@
-"""PEP 484 annotation → JSON Schema inference.
+"""PEP 484 annotation → JSON Schema inference (runtime projector).
 
-The codegen reads `__annotations__` off decorated functions and methods and
-produces JSON Schema for both the TypeScript-side parameter typing and the
-JSON-RPC payload validation. This module is the single source of truth for
-the supported subset of PEP 484 (per `spec-python-capability-bridge.md` §5.6).
+When `@tool(..., parameters=None)` is omitted, or a `@service`-decorated
+dataclass surfaces Config fields to the generic plugin, this module resolves
+Python type hints into JSON Schema (per `spec-python-capability-bridge.md`
+§5.6). The TypeScript codegen ships its own source-text projector
+(`pythonTypeToTs` in `packages/bridge/python-bridge-codegen`) that covers the
+same PEP 484 subset; the two implementations are independent — the codegen
+never imports the Python module and vice versa.
 
 @module dsh_bridge._type_inference
 """

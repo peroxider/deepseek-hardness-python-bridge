@@ -37,7 +37,7 @@ const artifacts = generateBridgePackage({
 
 ## Type inference
 
-The codegen mirrors the Python `dsh_bridge._type_inference` subset:
+The codegen ships its own PEP 484 → TypeScript projector (`pythonTypeToTs`); the rules below cover the same subset the Python `dsh_bridge._type_inference` module supports, but the two implementations are independent — the codegen reads source text and never imports the Python module:
 
 | Python annotation | TypeScript |
 | --- | --- |
