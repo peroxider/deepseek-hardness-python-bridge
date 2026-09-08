@@ -109,8 +109,11 @@ pnpm dsh-bridge-codegen src/my_ml/provider.py \
     className: MLProvider
     pipDeps: ['numpy>=1.26']
     sandbox: workspace-write
+    readDenyPaths: ['/etc', '/root/.ssh', '/home/*/.aws']
     modelPath: /opt/models/embeddings.npy
 ```
+
+`readDenyPaths` 是 `sandbox` 在读侧的搭档。sandbox runner 的 `confine()` 只是**写**白名单，所以在 `workspace-write` 下子进程仍可读取任何父进程可读的宿主路径（运维密钥、`/etc/shadow` 等）；`readDenyPaths` 在子进程内安装一份 Python `sys.addaudithook` 拒绝清单，对匹配规则的 `open` / `os.open` / `os.scandir` / `os.listdir` / `subprocess.Popen` 调用直接拒绝。规则同时匹配该路径**及其整个子树**（`/etc` 覆盖 `/etc/passwd`），无需再写一条 `/etc/*`。请注意 `*` 会跨越路径分隔符，因此 `/home/*/.aws` 比 shell 通配**更宽**，会匹配 `/home/a/b/c/.aws`——建议使用更具体的前缀。读隔离独立于 sandbox 模式，即便在 `danger-full-access` 下同样生效；匹配语义与已知边界见 [`packages/bridge/python-bridge-runtime/README.zh.md`](../../packages/bridge/python-bridge-runtime/README.zh.md#readdenypaths--读侧隔离)。
 
 启动 dsh：
 

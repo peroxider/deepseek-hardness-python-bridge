@@ -109,8 +109,11 @@ The generated package contains:
     className: MLProvider
     pipDeps: ['numpy>=1.26']
     sandbox: workspace-write
+    readDenyPaths: ['/etc', '/root/.ssh', '/home/*/.aws']
     modelPath: /opt/models/embeddings.npy
 ```
+
+`readDenyPaths` is the read-side counterpart to `sandbox`. The sandbox runner's `confine()` is a **write** allow-list only, so under `workspace-write` the child can still read any caller-readable host path (operator secrets, `/etc/shadow`, etc.); `readDenyPaths` installs a Python `sys.addaudithook` deny-list in the child that rejects `open` / `os.open` / `os.scandir` / `os.listdir` / `subprocess.Popen` calls matching the rules. A rule matches the named path **and its whole subtree** (`/etc` covers `/etc/passwd`), so there is no need for a separate `/etc/*` entry. Note that the glob `*` spans path separators, so `/home/*/.aws` is **broader** than shell globbing suggests and will also match `/home/a/b/c/.aws` — prefer specific prefixes. Read isolation is independent of sandbox mode and applies even under `danger-full-access`; see [`packages/bridge/python-bridge-runtime/README.md`](../../packages/bridge/python-bridge-runtime/README.md#readdenypaths--read-side-isolation) for the matching semantics and caveats.
 
 Boot dsh with the composition:
 

@@ -2,6 +2,10 @@
 
 import io
 import json
+import os
+import pathlib
+import subprocess
+import sys
 import threading
 from dataclasses import dataclass
 
@@ -548,3 +552,153 @@ def test_bridge_error_kind_map_is_complete():
         ConnectionError,
     }
     assert expected.issubset(set(BRIDGE_ERROR_KIND_MAP.keys()))
+
+
+# ---------------------------------------------------------------------------
+# main() read-isolation wiring
+#
+# These spawn a subprocess: `main()` installs a `sys.addaudithook` callback
+# that CPython cannot remove for the interpreter's lifetime, so running them
+# in-process would leak the hook into every later test in this file.
+# ---------------------------------------------------------------------------
+
+
+_FIXTURES_DIR = pathlib.Path(__file__).resolve().parent / "fixture_module"
+_SDK_SRC_DIR = pathlib.Path(__file__).resolve().parents[1] / "src"
+
+
+def _run_main(env_extra: dict[str, str], module: str = "read_at_import") -> subprocess.CompletedProcess:
+    """Invoke `dsh_bridge.runtime.main()` in a fresh interpreter.
+
+    stdin is closed immediately so, if startup succeeds, `serve()` sees EOF
+    and returns instead of blocking. `PYTHONPATH` carries both the fixture
+    directory and the working-tree `src` so the child resolves imports the
+    same way the integration harness does.
+    """
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join((str(_FIXTURES_DIR), str(_SDK_SRC_DIR))),
+        "PYTHONUNBUFFERED": "1",
+        **env_extra,
+    }
+    return subprocess.run(
+        [sys.executable, "-m", "dsh_bridge.runtime", module, "--class", "Reader"],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+        timeout=60,
+    )
+
+
+def _bridge_logs(stdout: str) -> list[dict]:
+    """Extract `bridge/log` notification params from a runtime's stdout."""
+    frames = (json.loads(line) for line in stdout.split("\n") if line.strip())
+    return [f["params"] for f in frames if f.get("method") == "bridge/log"]
+
+
+def test_main_installs_read_isolation_before_module_import(tmp_path):
+    """The hook must be live before `importlib.import_module` runs.
+
+    The fixture module reads `DSH_TEST_READ_TARGET` during its own import. A
+    deny rule covering that file means the import itself must fail — proving
+    the hook was installed first. Were it installed after the import, the
+    read would succeed and startup would proceed normally.
+    """
+    secret = tmp_path / "credentials"
+    secret.write_text("token", encoding="utf-8")
+
+    result = _run_main(
+        {
+            "DSH_TEST_READ_TARGET": str(secret),
+            "DSH_READ_DENY_PATHS_JSON": json.dumps({"rules": [str(tmp_path)]}),
+        }
+    )
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "ReadIsolationError" in result.stderr, result.stderr
+    assert "matched deny rule" in result.stderr, result.stderr
+    # The import never completed, so the transport was never established and
+    # no protocol frame can have been written to stdout.
+    assert result.stdout == "", result.stdout
+
+
+def test_main_allows_import_time_read_when_not_denied(tmp_path):
+    """Control case: the same read succeeds when no rule covers it.
+
+    Without this, the test above would also pass if `main()` crashed for an
+    unrelated reason.
+    """
+    secret = tmp_path / "credentials"
+    secret.write_text("token", encoding="utf-8")
+
+    result = _run_main(
+        {
+            "DSH_TEST_READ_TARGET": str(secret),
+            "DSH_READ_DENY_PATHS_JSON": json.dumps({"rules": ["/nonexistent/never_matches"]}),
+        }
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "ReadIsolationError" not in result.stderr, result.stderr
+
+
+def test_main_logs_read_isolation_activation_without_leaking_rules(tmp_path):
+    """Startup emits one `bridge/log` INFO carrying the rule COUNT only.
+
+    Deny rules may name sensitive locations, so the message must never
+    include the paths themselves.
+    """
+    secret = tmp_path / "credentials"
+    secret.write_text("token", encoding="utf-8")
+    sentinel_rule = "/nonexistent/sentinel_rule_path"
+
+    result = _run_main(
+        {
+            "DSH_TEST_READ_TARGET": str(secret),
+            "DSH_READ_DENY_PATHS_JSON": json.dumps({"rules": [sentinel_rule, "/nonexistent/other"]}),
+        }
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    messages = [params.get("message", "") for params in _bridge_logs(result.stdout)]
+    activation = [m for m in messages if "read isolation active" in m]
+    assert activation == ["read isolation active: 2 deny rules"], messages
+    assert sentinel_rule not in result.stdout
+    assert sentinel_rule not in result.stderr
+
+
+def test_main_fails_open_and_warns_on_malformed_deny_config(tmp_path):
+    """Malformed JSON disables isolation rather than blocking startup.
+
+    Fail-open is deliberate: a typo in operator config must not take the
+    bridge down, but it must be loud enough to notice.
+    """
+    secret = tmp_path / "credentials"
+    secret.write_text("token", encoding="utf-8")
+
+    result = _run_main(
+        {
+            "DSH_TEST_READ_TARGET": str(secret),
+            "DSH_READ_DENY_PATHS_JSON": "{not json",
+        }
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    logs = _bridge_logs(result.stdout)
+    warnings = [p.get("message", "") for p in logs if p.get("level") == "WARN"]
+    assert any("could not be parsed" in m for m in warnings), logs
+
+
+def test_main_without_deny_config_installs_no_hook(tmp_path, monkeypatch):
+    """Default deployments see no behavior change and no activation log."""
+    secret = tmp_path / "credentials"
+    secret.write_text("token", encoding="utf-8")
+
+    monkeypatch.delenv("DSH_READ_DENY_PATHS_JSON", raising=False)
+    result = _run_main({"DSH_TEST_READ_TARGET": str(secret)})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "read isolation active" not in result.stdout
+    assert "could not be parsed" not in result.stdout

@@ -197,10 +197,19 @@ const ctx = new Context({})
 // unwrapped; danger-full-access bypasses confinement entirely.
 {
   const confinedCalls = []
+  const DENIAL_SIGNATURES = ['bwrap: Can\'t create file', 'EROFS']
+  const RUNNER_FAILURE_RULES = [
+    { allowedExitCodes: [0, 1], fatalSignatures: ['bwrap: execvp'], informationalLines: ['bwrap: note'] },
+  ]
   const fakeSandbox = {
     confine: (argv, policy) => {
       confinedCalls.push({ argv, policy })
-      return { argv: ['bwrap', '--ro-bind', '/', '/', ...argv], enforcement: 'full', denialSignatures: [] }
+      return {
+        argv: ['bwrap', '--ro-bind', '/', '/', ...argv],
+        enforcement: 'full',
+        denialSignatures: DENIAL_SIGNATURES,
+        runnerFailureRules: RUNNER_FAILURE_RULES,
+      }
     },
   }
   const ctxWithSandbox = new Context({ sandbox: fakeSandbox })
@@ -208,7 +217,7 @@ const ctx = new Context({})
   const argvSeen = []
   const child = new FakeChild()
   withInitialize(child)
-  service.spawn(
+  const bridge = service.spawn(
     { module: 'm', sandbox: 'workspace-write', cwd: '/tmp/ws', reconnect: { enabled: false } },
     { spawnFn: (argv) => { argvSeen.push([...argv]); return child }, probeFn: () => true },
   )
@@ -218,6 +227,42 @@ const ctx = new Context({})
   // unchanged, on Windows it becomes `C:\tmp\ws` exactly as the runtime's
   // `resolve(cwd)` produces.
   assert(confinedCalls[0]?.policy?.workspaceRoot === resolve('/tmp/ws'), 'workspaceRoot resolved from cwd')
+
+  // The rest of ConfinedArgv (enforcement / denialSignatures /
+  // runnerFailureRules) used to be discarded. It is now captured so operators
+  // can tell "confinement is partial" from "confinement is full".
+  assert(bridge.sandboxInfo?.enforcement === 'full',
+    `sandboxInfo.enforcement captured (got ${bridge.sandboxInfo?.enforcement})`)
+  assert(JSON.stringify(bridge.sandboxInfo?.denialSignatures) === JSON.stringify(DENIAL_SIGNATURES),
+    `sandboxInfo.denialSignatures captured (got ${JSON.stringify(bridge.sandboxInfo?.denialSignatures)})`)
+  assert(bridge.sandboxInfo?.runnerFailureRules?.[0]?.fatalSignatures?.[0] === 'bwrap: execvp',
+    'sandboxInfo.runnerFailureRules captured')
+  assert(bridge.sandboxInfo?.policy?.mode === 'workspace-write', 'sandboxInfo carries the policy')
+  // Defensive copy: mutating the array the fake sandbox returned must not
+  // reach through into the captured info.
+  DENIAL_SIGNATURES.push('MUTATED')
+  assert(bridge.sandboxInfo?.denialSignatures?.length === 2,
+    'sandboxInfo.denialSignatures is a defensive copy')
+  DENIAL_SIGNATURES.pop()
+
+  await waitFor(() => bridge.ready, 'ready before manifest.sandbox assertions')
+  assert(bridge.manifest?.sandbox?.enforcement === 'full',
+    `manifest.sandbox.enforcement mirrors sandboxInfo (got ${bridge.manifest?.sandbox?.enforcement})`)
+  assert(JSON.stringify(bridge.manifest?.sandbox?.denialSignatures) === JSON.stringify(DENIAL_SIGNATURES),
+    `manifest.sandbox.denialSignatures mirrors sandboxInfo (got ${JSON.stringify(bridge.manifest?.sandbox?.denialSignatures)})`)
+
+  // A runner denial on stderr surfaces as a bridge/log WARN naming the
+  // signature that matched, rather than only appearing in stderrTail at exit.
+  const sandboxLogs = []
+  bridge.onLog(entry => { if (entry.source === 'sandbox') sandboxLogs.push(entry) })
+  child.stderr.write('EROFS: read-only file system\nunrelated chatter\n')
+  await waitFor(() => sandboxLogs.length > 0, 'sandbox denial line surfaced as bridge/log')
+  assert(sandboxLogs[0]?.level === 'WARN', `denial log level is WARN (got ${sandboxLogs[0]?.level})`)
+  assert(sandboxLogs[0]?.matchedSignature === 'EROFS',
+    `denial log names the matched signature (got ${sandboxLogs[0]?.matchedSignature})`)
+  assert(sandboxLogs[0]?.sandboxMode === 'workspace-write',
+    `denial log carries the sandbox mode (got ${sandboxLogs[0]?.sandboxMode})`)
+  assert(sandboxLogs.length === 1, `non-matching stderr lines are not forwarded (got ${sandboxLogs.length})`)
   await service.dispose()
 
   const service2 = new PythonBridgeService(ctxWithSandbox)
@@ -306,6 +351,72 @@ const ctx = new Context({})
     `initialize carries clientInfo {name, version} (got ${JSON.stringify(initParams?.clientInfo)})`,
   )
   await service.dispose()
+}
+
+// 12. readDenyPaths: encoded into DSH_READ_DENY_PATHS_JSON for the Python
+// child's audit hook. The hook itself is covered by the Python suite
+// (`python/sdk-dsl/tests/test_read_isolation.py`); what matters here is that
+// the TS side hands the child a well-formed config, omits the env var when
+// unconfigured, and fails closed rather than truncating an oversized list.
+{
+  const service = new PythonBridgeService(ctx)
+  let envSeen = null
+  const child = new FakeChild()
+  withInitialize(child)
+  service.spawn(
+    { module: 'm', readDenyPaths: ['/tmp/sensitive', '/home/*/.aws'], reconnect: { enabled: false } },
+    { spawnFn: (_argv, opts) => { envSeen = opts.env; return child }, probeFn: () => true },
+  )
+  const decoded = JSON.parse(envSeen?.DSH_READ_DENY_PATHS_JSON ?? '{}')
+  assert(JSON.stringify(decoded) === JSON.stringify({ rules: ['/tmp/sensitive', '/home/*/.aws'] }),
+    `readDenyPaths encoded as {rules:[...]} (got ${envSeen?.DSH_READ_DENY_PATHS_JSON})`)
+  await service.dispose()
+
+  // Unconfigured: the env var must be absent, not an empty JSON document, so
+  // the Python side's `parse_config` returns None and no hook is installed.
+  const service2 = new PythonBridgeService(ctx)
+  let envSeen2 = null
+  const child2 = new FakeChild()
+  withInitialize(child2)
+  service2.spawn(
+    { module: 'm', reconnect: { enabled: false } },
+    { spawnFn: (_argv, opts) => { envSeen2 = opts.env; return child2 }, probeFn: () => true },
+  )
+  assert(envSeen2 && !('DSH_READ_DENY_PATHS_JSON' in envSeen2),
+    'no readDenyPaths leaves the env var unset')
+  await service2.dispose()
+
+  // An empty array is treated as "unconfigured" too — an empty rules list
+  // would otherwise install a hook that matches nothing but still pays the
+  // per-open audit cost.
+  const service3 = new PythonBridgeService(ctx)
+  let envSeen3 = null
+  const child3 = new FakeChild()
+  withInitialize(child3)
+  service3.spawn(
+    { module: 'm', readDenyPaths: [], reconnect: { enabled: false } },
+    { spawnFn: (_argv, opts) => { envSeen3 = opts.env; return child3 }, probeFn: () => true },
+  )
+  assert(envSeen3 && !('DSH_READ_DENY_PATHS_JSON' in envSeen3),
+    'empty readDenyPaths leaves the env var unset')
+  await service3.dispose()
+
+  // Oversized config fails closed BEFORE spawn: silently truncating would
+  // hand the child a shorter deny list than the operator asked for.
+  const service4 = new PythonBridgeService(ctx)
+  let spawnCalls = 0
+  let caught = null
+  const huge = Array.from({ length: 4000 }, (_, i) => `/deny/path/number/${i}/with/padding`)
+  try {
+    service4.spawn(
+      { module: 'm', readDenyPaths: huge, reconnect: { enabled: false } },
+      { spawnFn: () => { spawnCalls++; return new FakeChild() }, probeFn: () => true },
+    )
+  } catch (e) { caught = e }
+  assert(caught instanceof PythonBridgeError && caught.kind === 'config-too-large',
+    `oversized readDenyPaths rejected (got ${caught?.kind})`)
+  assert(spawnCalls === 0, 'no child spawned when readDenyPaths is oversized')
+  await service4.dispose()
 }
 
 if (failures > 0) {

@@ -67,6 +67,12 @@ Defects hit by real conversions. Match the symptom before debugging from scratch
 
 When extending the wire, follow [`docs/protocol.md`](../../../docs/protocol.md): same-major manifest and request changes are optional and additive; removals, renames, type changes, or new required behavior need a coordinated major bump.
 
+## Child reads a path the operator didn't expect
+
+**Symptom**: a tool succeeds at reading a host file (`~/.aws/credentials`, `/etc/shadow`, `/root/.ssh/id_rsa`) under `workspace-write`, even though "the sandbox is on". The corresponding JSON-RPC error (`PermissionError`, `kind: 'permission'`, `-32003`) only appears when the path also matches an entry in `readDenyPaths`.
+**Cause**: the sandbox runner's `confine()` is a **write** allow-list, not a read deny-list — under `workspace-write` the confined child can still read any caller-readable host path. The runtime installs a Python `sys.addaudithook` deny-list from `readDenyPaths` separately from sandbox confinement; a `sandbox` field set without a `readDenyPaths` list protects writes but not reads.
+**Fix**: configure `readDenyPaths: [...]` on the spawn spec (or its generated plugin config) listing the host paths tools must not read. Remember the rules are broader than shell globbing — `*` spans path separators, so prefer specific prefixes (`/etc`, `/root/.ssh`, `/home/*/.aws`). When a denial does fire, the runtime classifies it as `PermissionError` → `kind: 'permission'` / `-32003` and the operator-facing error message names both the offending path and the matched rule. To confirm what the sandbox runner actually enforced, read `bridge.sandboxInfo.enforcement` (TS): `'partial'` means the backend could not apply every rule and `readDenyPaths` may be your only line of defense on those hosts.
+
 ## Plugin changes do not take effect
 
 **Cause**: the running instance holds the old artifacts in memory.

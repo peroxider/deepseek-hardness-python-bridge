@@ -80,6 +80,49 @@ reconnect: {
 
 当 sandbox seam 已加载时，`ctx.sandbox.confine(argv, { mode })` 在 spawn 前包装子进程 argv，且 confinement 失败会直接抛出（bridge 不会静默绕过）。当 seam 缺失时，无论 `sandbox` 字段如何设置子进程都不受限——需要 confinement 的部署必须加载 `dsh-sandbox` 及其后端。
 
+`confine()` 是**写**白名单。读取、网络与进程可见性都不在其词汇表内，因此在 `workspace-write` 下子进程仍可读取父进程能读的任意宿主文件——包括 `~/.aws/credentials` 与 `/etc/shadow`。用下文的 `readDenyPaths` 补上这个缺口。
+
+### 查看 runner 实际施加了什么
+
+`bridge.sandboxInfo` 返回 `confine()` 的报告；当未发生 confinement 时（seam 缺失，或 `sandbox: 'danger-full-access'`）为 `undefined`：
+
+```ts
+const info = bridge.sandboxInfo
+info?.enforcement        // 'full' | 'partial'——'partial' 表示后端未能施加全部规则
+info?.policy.mode        // 请求时使用的 SandboxPolicy
+info?.denialSignatures   // 后端特有的、表示拒绝的 stderr 前缀
+info?.runnerFailureRules // 后端退出码 / 签名规则
+```
+
+`spawn()` 返回后即可同步读取，不必等待 initialize 握手。握手完成后同一对象会镜像到 `bridge.manifest.sandbox`，便于已经在读 manifest 的调用方。
+
+当子进程某行 stderr 以 `denialSignatures` 之一开头时，bridge 会将其作为 `source: 'sandbox'` 的 `WARN` 条目转发给 `onLog()` 订阅者，并附带 `matchedSignature` 与 `sandboxMode`。这是尽力而为的暴露：若某后端的 stderr 格式与其声明的签名不一致则不会被匹配到。
+
+### `readDenyPaths` —— 读侧隔离
+
+`readDenyPaths` 在 Python 子进程内部安装一份拒绝清单，与 sandbox 模式无关。即使在 `danger-full-access` 下它同样生效：理由是无论运维选择何种写约束，受模型控制的工具都不应读取运维密钥。
+
+```ts
+ctx.pythonBridge.spawn({
+  module: 'my_pkg.provider',
+  sandbox: 'workspace-write',
+  readDenyPaths: ['/etc', '/root/.ssh', '/home/*/.aws'],
+})
+```
+
+该清单以 JSON 编码进 `DSH_READ_DENY_PATHS_JSON`；Python 运行时在 import 你的模块**之前**安装 `sys.addaudithook` 回调，因此模块导入期间发生的读取也在覆盖范围内。命中规则会抛出 `PermissionError`，到调用方表现为 `kind: 'permission'` / `-32003`。
+
+匹配规则：
+
+- 一条规则同时匹配该路径**及其整个子树**——`/etc` 覆盖 `/etc/passwd` 与 `/etc/ssl/private/key.pem`，无需再写一条 `/etc/*`。
+- 匹配前会解析符号链接（`os.path.realpath`），同时也按调用方书写的原样匹配，因此规则既可指向链接本身也可指向其目标。
+- `*` 遵循 `fnmatch` 语义，会跨越路径分隔符。这里没有独立的 `**` globstar，因此规则比 shell 通配**更宽**：`/home/*/.aws` 也会匹配 `/home/a/b/c/.aws`。建议使用更具体的前缀。
+- 只要 hook 已安装，`/proc/self/mem` 与 `/proc/<pid>/mem` 始终被拒绝，即使规则列表为空。
+
+不填该字段（或传 `[]`）则完全不安装 hook——未配置的部署零开销。清单过大（编码后超过 64 KB）会在 spawn 前抛出 `kind: 'config-too-large'` 的 `PythonBridgeError`，而不是被截断。Python 侧配置格式错误时 **fail-open** 并记录 `WARN`，因此运维的一处笔误不会让 bridge 停摆。
+
+覆盖的 audit 事件为 `open`、`os.open`、`os.scandir`、`os.listdir`（仅 CPython 3.12+，更早版本不产生该事件）与 `subprocess.Popen`。这是纵深防御而非安全边界：`ctypes.CDLL`/`dlopen` 与原生代码可以直接调用 `open(2)`。若这一点对你重要，请在策略层禁止 `import ctypes`。
+
 ## 模型体验
 
 无：本包不暴露模型可见的表面；prompt / 工具 schema 由生成的 bridge 包根据其装饰的 Python 模块提供。
@@ -91,5 +134,6 @@ reconnect: {
 ## 已知限制与未完成工作
 
 - **沙箱 confinement 依赖可选 seam** —— 未加载 `dsh-sandbox` 时 `sandbox` 字段仅为提示。
+- **`readDenyPaths` 是纵深防御而非边界** —— 它由子进程内的 Python audit hook 施加，原生代码与 `ctypes` 可以绕过；`os.listdir` 仅在 CPython 3.12+ 上被覆盖。
 - **默认不内嵌 CPython 解释器**；本包是进程管理层而非运行时。Pyodide 低延迟路径单独追踪（见 `packages/core/tools/README.md:27`）。
 - **重连期间的监听器通知队列未实现** —— spec §6.7 的每事件类型 1 MiB 队列暂缓；子进程断连期间产生的通知会被丢弃。

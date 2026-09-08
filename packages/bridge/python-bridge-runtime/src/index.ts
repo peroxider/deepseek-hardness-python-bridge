@@ -19,7 +19,7 @@ import { spawn as spawnChildProcess, spawnSync } from 'node:child_process'
 import { delimiter, resolve } from 'node:path'
 import type { Readable, Writable } from 'node:stream'
 import { Context, Service } from '@deepseek-ai/cordis'
-import type { SandboxPolicy, SandboxProvider } from '@deepseek-ai/dsh-sandbox'
+import type { SandboxPolicy, SandboxProvider, SandboxEnforcement, RunnerFailureRule } from '@deepseek-ai/dsh-sandbox'
 import {
   JsonRpcLineTransport,
   JsonRpcResponseError,
@@ -72,6 +72,21 @@ export interface PythonBridgeSpawnSpec {
   cwd?: string
   /** Sandbox policy for `ctx.sandbox.confine()` when the seam is loaded. */
   sandbox?: PythonBridgeSandbox
+  /**
+   * Glob patterns denied by the Python-side read-isolation hook
+   * (independent of the sandbox seam's write confinement). The TS side
+   * JSON-encodes this list as the `DSH_READ_DENY_PATHS_JSON` env var;
+   * the Python runtime installs a `sys.addaudithook` deny-list before
+   * any user code runs. Hooked events: `open`, `os.open`, `os.scandir`,
+   * `subprocess.Popen`. Rules are matched against `os.path.realpath()`
+   * via `fnmatch`; `**` is not supported. Empty/undefined → no hook
+   * installed (zero overhead). Applies even under `sandbox: 'danger-full-access'`
+   * because a model-controlled tool should not read operator secrets
+   * regardless of write-confinement choice. Encoded size is capped at
+   * {@link MAX_READ_DENY_BYTES}; oversized configs raise
+   * `PythonBridgeError` of `kind: 'config-too-large'` before spawn.
+   */
+  readDenyPaths?: readonly string[]
   /** Reconnect policy (default: enabled with exponential backoff). */
   reconnect?: PythonBridgeReconnectOptions
   /** Grace period in milliseconds for each teardown ladder step (default: 3000). */
@@ -90,6 +105,38 @@ export interface PythonBridgeInitField {
   default?: unknown
   /** Default-factory function name when the field uses `field(default_factory=...)`. */
   defaultFactory?: string
+}
+
+/**
+ * Snapshot of what `ctx.sandbox.confine()` returned for one PythonBridge
+ * spawn. Captured at `buildArgv()` time and attached to the bridge's
+ * `manifest.sandbox` AFTER the initialize handshake resolves. Surface for
+ * diagnostics — exposes the runner's reported enforcement completeness
+ * and the backend-specific denial signatures the child stderr will emit
+ * when the runner blocks a write.
+ */
+export interface ConfinedSandboxInfo {
+  /** The policy that was passed to `ctx.sandbox.confine()`. */
+  policy: SandboxPolicy
+  /** Backend's enforcement completeness for this policy on this host. */
+  enforcement: SandboxEnforcement
+  /**
+   * Backend-specific denial dialect (case-insensitive substrings). The
+   * child-stderr matcher in this class compares incoming stderr lines
+   * against these to surface runner denials as `bridge/log` WARN.
+   */
+  denialSignatures: readonly string[]
+  /**
+   * Structured runner-failure evidence; a stderr line is "runner failure"
+   * (not denial) when it matches a rule's `fatalSignatures` after
+   * removing any `informationalLines` by full-line equality. Operators
+   * consume this when classifying stderr patterns.
+   */
+  runnerFailureRules: readonly {
+    allowedExitCodes?: readonly number[]
+    fatalSignatures: readonly string[]
+    informationalLines?: readonly string[]
+  }[]
 }
 
 /** Manifest returned by `python -u -m dsh_bridge.runtime` during `initialize`. */
@@ -133,6 +180,15 @@ export interface PythonBridgeManifest {
   capabilityMethods: string[]
   promptSections: Array<{ order: number; text: string; function: string }>
   methods: string[]
+  /**
+   * Snapshot of the `ctx.sandbox.confine()` result for this spawn, attached
+   * by the TS runtime AFTER the Python side's initialize handshake
+   * resolves. Undefined when no sandbox confinement ran (sandbox seam
+   * absent, `danger-full-access` mode, or a non-default policy that fell
+   * through the seam-missing warning path). Available synchronously via
+   * `bridge.sandboxInfo` regardless of `bridge.manifest` availability.
+   */
+  sandbox?: ConfinedSandboxInfo
 }
 
 /** Initialize handshake result. */
@@ -169,11 +225,15 @@ export interface PythonBridgeEventEnvelope {
   module: string
 }
 
-/** One `bridge/log` entry forwarded from Python logging or proxied stdout. */
+/** One `bridge/log` entry forwarded from Python logging, proxied stdout, or a sandbox denial. */
 export interface PythonBridgeLogEntry {
   level: string
   source: string
   message: string
+  /** Set on TS-emitted sandbox denial entries: the matched runner signature. */
+  matchedSignature?: string
+  /** Set on TS-emitted sandbox denial entries: the effective sandbox mode. */
+  sandboxMode?: PythonBridgeSandbox
 }
 
 /**
@@ -288,6 +348,15 @@ const RECONNECT_DEFAULTS = {
 /** Number of trailing stderr lines retained for worker-exit diagnostics. */
 const STDERR_RING_LINES = 100
 
+/**
+ * Maximum encoded size of the `DSH_READ_DENY_PATHS_JSON` env value (bytes).
+ * Symmetric with `python/sdk-dsl/src/dsh_bridge/_read_isolation.py`'s
+ * `MAX_CONFIG_BYTES`. The TS side fails closed before spawn when this is
+ * exceeded (raises `PythonBridgeError` of `kind: 'config-too-large'`);
+ * Python sees no oversized input.
+ */
+const MAX_READ_DENY_BYTES = 65_536
+
 /** JSON-RPC code for a spawn-time probe failure (missing dsh-bridge runtime). */
 const DEPENDENCY_MISSING_CODE = -32012
 
@@ -329,6 +398,7 @@ export class PythonBridge {
   private resolveExit: ((exit: ChildExit) => void) | undefined
   private initialized = false
   private manifest: PythonBridgeManifest | undefined
+  private _confinedSandboxInfo: ConfinedSandboxInfo | undefined
   private disposed = false
   private reconnectAttempt = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
@@ -349,6 +419,30 @@ export class PythonBridge {
   /** Whether the bridge completed its initialize handshake and is not disposed. */
   get ready(): boolean {
     return this.initialized && !this.disposed
+  }
+
+  /**
+   * Snapshot of the `ctx.sandbox.confine()` result for this spawn. Undefined
+   * until `buildArgv()` runs and only set when confine() actually returned
+   * a result (seam missing or `danger-full-access` leave it undefined).
+   * The same value is mirrored to `bridgeManifest.sandbox` once the Python
+   * side's initialize handshake resolves.
+   */
+  get sandboxInfo(): ConfinedSandboxInfo | undefined {
+    return this._confinedSandboxInfo
+  }
+
+  /**
+   * Deliver one log entry to every registered `onLog` subscriber. Used by
+   * the stderr-denial matcher to surface runner-blocked writes as
+   * `bridge/log` WARN without the round-trip through the Python side
+   * (the source is TS-originated, so the Python log handler would only
+   * forward it back anyway).
+   */
+  private emitLog(entry: PythonBridgeLogEntry): void {
+    for (const handler of this.logListeners) {
+      try { handler(entry) } catch { /* listener errors must not break the wire */ }
+    }
   }
 
   constructor(ctx: Context, spec: PythonBridgeSpawnSpec, internals: PythonBridgeInternals = {}) {
@@ -540,10 +634,33 @@ export class PythonBridge {
     child.once('exit', onExit)
 
     child.stderr?.on('data', (chunk: Buffer | string) => {
-      for (const line of String(chunk).split('\n')) {
-        if (!line) continue
-        this.stderrRing.push(line)
+      for (const rawLine of String(chunk).split('\n')) {
+        if (!rawLine) continue
+        this.stderrRing.push(rawLine)
         if (this.stderrRing.length > STDERR_RING_LINES) this.stderrRing.shift()
+        // Sandbox-denial surfacing: when the runner reports a write that the
+        // confinement policy blocked, its stderr line starts with one of
+        // the backend-specific `denialSignatures` we captured at buildArgv
+        // time (per `@deepseek-ai/dsh-sandbox` ConfinedArgv contract).
+        // Forward the matched line as a `bridge/log` WARN so log subscribers
+        // see "the runner actually denied something" instead of only seeing
+        // it on process exit via stderrTail.
+        const signatures = this._confinedSandboxInfo?.denialSignatures
+        if (!signatures || signatures.length === 0) continue
+        const stripped = rawLine.replace(/\x1b\[[0-9;]*m/g, '')
+        const lower = stripped.toLowerCase()
+        for (const sig of signatures) {
+          if (sig && lower.startsWith(sig.toLowerCase())) {
+            this.emitLog({
+              level: 'WARN',
+              source: 'sandbox',
+              message: stripped,
+              matchedSignature: sig,
+              sandboxMode: this._confinedSandboxInfo?.policy.mode,
+            })
+            break
+          }
+        }
       }
     })
 
@@ -628,7 +745,18 @@ export class PythonBridge {
       mode: this.spec.sandbox,
       workspaceRoot: resolve(this.spec.cwd ?? process.cwd()),
     }
-    return sandbox.confine(argv, policy).argv
+    const confined = sandbox.confine(argv, policy)
+    this._confinedSandboxInfo = {
+      policy,
+      enforcement: confined.enforcement,
+      denialSignatures: [...confined.denialSignatures],
+      runnerFailureRules: confined.runnerFailureRules.map((r: RunnerFailureRule) => ({
+        allowedExitCodes: r.allowedExitCodes ? [...r.allowedExitCodes] : undefined,
+        fatalSignatures: [...r.fatalSignatures],
+        informationalLines: r.informationalLines ? [...r.informationalLines] : undefined,
+      })),
+    }
+    return confined.argv
   }
 
   private buildEnv(): Record<string, string> {
@@ -638,6 +766,28 @@ export class PythonBridge {
         ...this.spec.pythonPath,
         ...(env.PYTHONPATH ? [env.PYTHONPATH] : []),
       ].join(delimiter)
+    }
+    // Encode the read-deny list once. An empty/undefined list skips the env
+    // var entirely so the Python side sees no env var and never installs
+    // the audit hook (zero overhead for deployments that don't configure
+    // it). Oversized configs fail closed before spawn — Python never sees
+    // oversized input.
+    if (this.spec.readDenyPaths && this.spec.readDenyPaths.length > 0) {
+      const encoded = JSON.stringify({ rules: [...this.spec.readDenyPaths] })
+      // Measure UTF-8 bytes, not `String.length` (UTF-16 code units): the OS
+      // environment block and the Python-side `MAX_CONFIG_BYTES` check both
+      // count bytes, so a non-ASCII path would otherwise slip past this cap.
+      const encodedBytes = Buffer.byteLength(encoded, 'utf8')
+      if (encodedBytes > MAX_READ_DENY_BYTES) {
+        throw new PythonBridgeError(
+          `readDenyPaths config too large: ${encodedBytes} bytes ` +
+            `(max ${MAX_READ_DENY_BYTES}). Shorten the deny list or contact ` +
+            'the bridge maintainers for a larger cap.',
+          'config-too-large',
+          -32603,
+        )
+      }
+      env.DSH_READ_DENY_PATHS_JSON = encoded
     }
     return env
   }
@@ -662,6 +812,14 @@ export class PythonBridge {
         clientInfo: { name: PYTHON_BRIDGE_CLIENT_NAME, version: PYTHON_BRIDGE_CLIENT_VERSION },
       })) as PythonBridgeInitializeResult
       if (this.disposed) return
+      // Mirror `_confinedSandboxInfo` into the manifest when the Python
+      // side has acknowledged initialize. The Python side has no view of
+      // the sandbox; this attach happens client-side. Operators reading
+      // `bridge.manifest?.sandbox` see the same value `bridge.sandboxInfo`
+      // exposes synchronously.
+      if (this._confinedSandboxInfo !== undefined) {
+        result.manifest = { ...result.manifest, sandbox: this._confinedSandboxInfo }
+      }
       this.manifest = result.manifest
       this.initialized = true
       this.lastReadyAt = Date.now()

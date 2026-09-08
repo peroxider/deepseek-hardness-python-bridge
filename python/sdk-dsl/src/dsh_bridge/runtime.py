@@ -32,6 +32,7 @@ import importlib
 import inspect
 import json
 import logging
+import os
 import queue
 import sys
 import threading
@@ -41,6 +42,8 @@ from concurrent.futures import ThreadPoolExecutor
 import dataclasses
 from dataclasses import dataclass, fields, is_dataclass
 from typing import Any, Callable, Optional
+
+from . import _read_isolation
 
 from ._bridge_metadata import (
     BridgeRegistry,
@@ -74,6 +77,12 @@ PROTOCOL_MISMATCH_CODE = -32006
 
 # Cap on the notification queue (per spec §6.7: drop after 1 MiB per event type).
 _NOTIFY_QUEUE_MAX_BYTES = 1024 * 1024
+
+# Module-level logger for startup diagnostics (e.g. read-isolation activation).
+# `_Server` carries its own `_logger` (`logging.getLogger("dsh_bridge.runtime")`);
+# using the same name keeps the startup line in the same logging namespace the
+# rest of the runtime already feeds through `_LoggingBridgeHandler`.
+logger = logging.getLogger("dsh_bridge.runtime")
 
 
 # ---------------------------------------------------------------------------
@@ -812,6 +821,17 @@ def _instantiate(module, class_name: str | None, init_args: dict[str, Any] | Non
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
+    # Install read-side isolation BEFORE any module imports so the audit
+    # hook catches reads performed during the target module's own import
+    # (e.g. `from .config import API_KEY` reaching into a deny-listed
+    # directory). The hook short-circuits when the env var is unset or
+    # the rules list is empty, so this is zero-overhead for deployments
+    # that do not configure it.
+    raw_deny = os.environ.get("DSH_READ_DENY_PATHS_JSON")
+    read_isolation_config = _read_isolation.parse_config(raw_deny)
+    if read_isolation_config is not None:
+        _read_isolation.install(read_isolation_config)
+
     # stdout is the protocol: capture the real stream for the transport before
     # replacing `sys.stdout` with a proxy that forwards user-code writes into
     # `bridge/log` notifications. This mirrors the SDK server's "stdout purity
@@ -838,6 +858,15 @@ def main(argv: list[str] | None = None) -> int:
     logging.getLogger().addHandler(handler)
     if logging.getLogger().level == logging.NOTSET or logging.getLogger().level > logging.INFO:
         logging.getLogger().setLevel(logging.INFO)
+
+    # Emit the read-isolation activation status now that the logging
+    # bridge can route the message to TS as a `bridge/log` notification.
+    # The rules themselves are never logged (operators may include
+    # sensitive paths in the deny list).
+    if read_isolation_config is not None:
+        logger.info("read isolation active: %d deny rules", len(read_isolation_config.rules))
+    elif raw_deny:
+        logger.warning("DSH_READ_DENY_PATHS_JSON could not be parsed; read isolation disabled")
 
     return server.serve()
 
